@@ -1,0 +1,124 @@
+package com.example.smartcampus
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import com.example.smartcampus.ui.theme.SmartCampusTheme
+
+class MapActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            SmartCampusTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
+                    MapScreen(
+                        onNavigateToHome = {
+                            startActivity(Intent(this, HomeActivity::class.java))
+                            finish()
+                        },
+                        onNavigateToSearch = {
+                            startActivity(Intent(this, SearchActivity::class.java))
+                            finish()
+                        },
+                        onNavigateToMapSelected = {
+                            startActivity(Intent(this, MapSelectedActivity::class.java))
+                        },
+                        onNavigateToAccount = {
+                            startActivity(Intent(this, AccountActivity::class.java))
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MapScreen(
+    onNavigateToHome: () -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onNavigateToMapSelected: () -> Unit,
+    onNavigateToAccount: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White)
+    ) {
+        // 1. Background Image (The entire UI design from map__1_.xml)
+        Image(
+            painter = painterResource(id = R.drawable.map__1_),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // 2. Functional Layer (Invisible Clickable Areas)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(horizontal = 24.dp)
+        ) {
+            // Back button area
+            Spacer(modifier = Modifier.height(130.dp))
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clickable { onNavigateToHome() }
+            )
+
+            Spacer(modifier = Modifier.height(430.dp))
+
+            // Saved Places List Items (Clicking here connects the arrow/row to the next screen)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .clickable { onNavigateToMapSelected() }
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .clickable { onNavigateToMapSelected() }
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Bottom Nav Click Areas
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToHome() })
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToSearch() })
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { /* Already on Map */ })
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToAccount() })
+            }
+        }
+    }
+}
