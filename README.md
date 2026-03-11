@@ -13,5 +13,3 @@ Tech Stack:
 - Android Studio
 - Node.js (backend)
 - MongoDB
-
-- 
