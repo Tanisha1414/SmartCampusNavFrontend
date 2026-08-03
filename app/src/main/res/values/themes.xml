@@ -8,8 +8,8 @@
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <!-- Match the white background of your image -->
         <item name="windowSplashScreenBackground">#FFFFFF</item>
-        <!-- Show @drawable/first as the single unified splash screen icon -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/first</item>
+        <!-- Show newly generated SmartCampus app icon on the OS splash screen -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_app_logo</item>
         <!-- The theme to use after the splash screen is gone -->
         <item name="postSplashScreenTheme">@style/Theme.SmartCampus</item>
     </style>

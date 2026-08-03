@@ -16,23 +16,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartCampus">
 
-        <!-- SplashActivity — launches first -->
+        <!-- Login — launches first with splash theme -->
         <activity
-            android:name=".SplashActivity"
+            android:name=".LoginActivity"
             android:exported="true"
+            android:label="Login"
             android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Login -->
-        <activity
-            android:name=".LoginActivity"
-            android:exported="false"
-            android:label="Login"
-            android:theme="@style/Theme.SmartCampus" />
 
         <!-- Register -->
         <activity
