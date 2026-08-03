@@ -56,7 +56,10 @@ fun SearchScreen(
     onNavigateToAccount: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-
+    val filteredLocations = SampleData.locations.filter {
+        it.name.contains(searchQuery, ignoreCase = true)
+    }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -102,20 +105,30 @@ fun SearchScreen(
                     unfocusedIndicatorColor = Color.Transparent,
                 )
             )
+            
+            // Results list
+            filteredLocations.take(5).forEach { location ->
+                Text(
+                    text = location.name,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clickable { /* logic to view on map */ }
+                )
+            }
 
             Spacer(modifier = Modifier.height(130.dp))
 
             // Recent Searches area
-            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Central Library */ })
+            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Logic */ })
 
             Spacer(modifier = Modifier.height(65.dp))
 
             // Suggested Places areas
-            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Greenzy */ })
+            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Logic */ })
             Spacer(modifier = Modifier.height(30.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Design Building */ })
+            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Logic */ })
             Spacer(modifier = Modifier.height(30.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Football Ground */ })
+            Box(modifier = Modifier.fillMaxWidth().height(65.dp).clickable { /* Logic */ })
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -128,16 +141,9 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Home Icon
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToHome() })
-                
-                // Search Icon
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { /* Current */ })
-                
-                // Map Icon (3rd Icon) -> Navigate to Map
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToMap() })
-                
-                // Profile Icon
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToAccount() })
             }
         }

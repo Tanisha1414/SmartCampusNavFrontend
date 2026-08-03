@@ -8,8 +8,8 @@
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <!-- Match the white background of your image -->
         <item name="windowSplashScreenBackground">#FFFFFF</item>
-        <!-- Hide the default app icon (Gmail logo) by making it transparent -->
-        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <!-- Show @drawable/first as the single unified splash screen icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/first</item>
         <!-- The theme to use after the splash screen is gone -->
         <item name="postSplashScreenTheme">@style/Theme.SmartCampus</item>
     </style>

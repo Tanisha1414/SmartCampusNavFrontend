@@ -1,124 +1,94 @@
 package com.example.smartcampus
 
-import android.content.Intent
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.webkit.GeolocationPermissions
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import com.example.smartcampus.ui.theme.SmartCampusTheme
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MapActivity : ComponentActivity() {
+    private lateinit var webView: WebView
+
+    // Modern replacement for onRequestPermissionsResult
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        // Whatever the result, reload so the WebView's geolocation prompt re-checks
+        webView.reload()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            SmartCampusTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-                    MapScreen(
-                        onNavigateToHome = {
-                            startActivity(Intent(this, HomeActivity::class.java))
-                            finish()
-                        },
-                        onNavigateToSearch = {
-                            startActivity(Intent(this, SearchActivity::class.java))
-                            finish()
-                        },
-                        onNavigateToMapSelected = {
-                            startActivity(Intent(this, MapSelectedActivity::class.java))
-                        },
-                        onNavigateToAccount = {
-                            startActivity(Intent(this, AccountActivity::class.java))
-                        }
-                    )
-                }
+        setContentView(R.layout.activity_map)
+
+        webView = findViewById(R.id.webView)
+
+        // Pad the WebView by exactly the system bar height, so its content
+        // (header, buttons, etc.) never sits underneath the status bar or nav bar.
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            setGeolocationEnabled(true)
+            allowFileAccessFromFileURLs = true
+            allowUniversalAccessFromFileURLs = true
+
+            // REMOVE these two — they were causing the zoom fight with Leaflet:
+            // loadWithOverviewMode = true
+            // useWideViewPort = true
+
+            // ADD these — let Leaflet's own JS fully own pinch/zoom gestures:
+            setSupportZoom(false)
+            builtInZoomControls = false
+            displayZoomControls = false
+
+            textZoom = 100   // stops Android's font-size accessibility setting from shrinking your CSS px sizes unpredictably
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                callback.invoke(origin, true, false)
             }
+        }
+
+        webView.webViewClient = WebViewClient()
+        webView.loadUrl("file:///android_asset/parul_campus_final.html")
+
+        // Ask for location permission using the modern launcher
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
-}
 
-@Composable
-fun MapScreen(
-    onNavigateToHome: () -> Unit,
-    onNavigateToSearch: () -> Unit,
-    onNavigateToMapSelected: () -> Unit,
-    onNavigateToAccount: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-    ) {
-        // 1. Background Image (The entire UI design from map__1_.xml)
-        Image(
-            painter = painterResource(id = R.drawable.map__1_),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        // 2. Functional Layer (Invisible Clickable Areas)
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 24.dp)
-        ) {
-            // Back button area
-            Spacer(modifier = Modifier.height(130.dp))
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clickable { onNavigateToHome() }
-            )
-
-            Spacer(modifier = Modifier.height(430.dp))
-
-            // Saved Places List Items (Clicking here connects the arrow/row to the next screen)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(65.dp)
-                    .clickable { onNavigateToMapSelected() }
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(65.dp)
-                    .clickable { onNavigateToMapSelected() }
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Bottom Nav Click Areas
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToHome() })
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToSearch() })
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { /* Already on Map */ })
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToAccount() })
-            }
-        }
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (webView.canGoBack()) webView.goBack()
+        else super.onBackPressed()
     }
 }

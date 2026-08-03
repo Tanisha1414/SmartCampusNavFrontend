@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Parul Campus Navigator</title>
+    <link rel="stylesheet" href="leaflet.css"/>
+    <link rel="stylesheet" href="routing.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <script src="leaflet.js"></script>
+    <script src="routing.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{
+          --bg:#0f1923;--surface:#162230;--surface2:#1d2e40;--border:#263548;
+          --accent:#00c896;--red:#ff4d6a;--blue:#0a8fff;
+          --text:#e8f0f8;--muted:#6b8299;
+          --font:'Inter',system-ui,sans-serif;
+        }
+        html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden}
+
+        /* ── LAYOUT ── */
+        #app{position:fixed;inset:0;display:flex;flex-direction:row}
+        #sidebar{width:310px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:500;transition:height .3s,width .3s,opacity .2s,transform .2s}
+        #map-wrap{flex:1;position:relative}
+        #map{position:absolute;inset:0}
+
+        /* ── MODE SWITCHING ── */
+        body.search-mode #app{display:block}
+        body.search-mode #sidebar{
+          position:fixed;inset:0;width:100%;height:100%;
+          border-right:none;border-bottom:none;overflow-y:auto;z-index:500
+        }
+        body.search-mode #map-wrap{display:none}
+        body.search-mode #map-controls,
+        body.search-mode #route-sheet{display:none}
+
+        body.map-mode #sidebar{display:none}
+        body.map-mode #map-wrap{
+          display:block;position:fixed;inset:0;z-index:400
+        }
+        body.map-mode #map{position:absolute;inset:0}
+        body.map-mode #nav-banner{
+          display:none;position:absolute;top:12px;left:12px;right:12px;z-index:1202;
+          border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.35)
+        }
+        body.map-mode #nav-banner.show{display:block}
+        body.map-mode #map-controls{display:flex}
+        body.map-mode #route-sheet{display:block}
+
+        /* ── MOBILE ── */
+        @media(max-width:700px){
+          #app{flex-direction:column}
+          #sidebar{width:100%;height:52vh;border-right:none;border-bottom:1px solid var(--border);overflow-y:auto}
+          #sidebar.nav-mode{height:160px;overflow:hidden}
+          #map-wrap{flex:1;min-height:48vh}
+          #route-panel{padding:8px 12px}
+          #turns-wrap{overflow-y:auto}
+          #list-wrap{overflow-y:auto}
+          .inp-wrap input{font-size:13px;padding:9px 10px 9px 30px}
+          #find-btn{padding:10px;font-size:13px}
+          .stats{margin-bottom:4px}
+          .sv{font-size:18px}
+        }
+
+        /* ── LOGO ── */
+        #logo{padding:12px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+        #logo h1{font-size:13px;font-weight:700;color:var(--accent)}
+        #logo p{font-size:10px;color:var(--muted);margin-top:1px}
+
+        /* ── NAV BANNER (shows during navigation) ── */
+        #nav-banner{
+          display:none;flex-shrink:0;
+          background:linear-gradient(135deg,#00c896,#007a5e);
+          padding:10px 14px;cursor:pointer
+        }
+        #nav-banner.show{display:block}
+        #nav-next-turn{font-size:22px;margin-right:8px}
+        #nav-instruction{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
+        #nav-dist-next{font-size:11px;color:rgba(255,255,255,.75);margin-top:2px}
+        #nav-bottom{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.2)}
+        #nav-dist-total{font-size:12px;color:rgba(255,255,255,.9);font-weight:600}
+        #nav-eta{font-size:11px;color:rgba(255,255,255,.7);margin-left:auto}
+        #nav-stop-btn{padding:5px 10px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font);font-weight:600}
+        #nav-stop-btn:hover{background:rgba(255,255,255,.35)}
+
+        /* ── ROUTE PANEL ── */
+        #route-panel{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+        .inp-wrap{position:relative;margin-bottom:6px}
+        .inp-wrap input{
+          width:100%;background:var(--surface2);border:1px solid var(--border);
+          color:var(--text);border-radius:8px;padding:8px 10px 8px 30px;
+          font-size:12px;outline:none;font-family:var(--font);transition:border .2s
+        }
+        .inp-wrap input:focus{border-color:var(--accent)}
+        .inp-wrap input::placeholder{color:var(--muted)}
+        .inp-dot{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;pointer-events:none}
+        .dd{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 8px 20px rgba(0,0,0,.6)}
+        .dd.open{display:block}
+        .ddi{padding:8px 10px;font-size:11px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:7px}
+        .ddi:hover{background:var(--border)}
+        .ddi-badge{font-size:9px;padding:2px 5px;border-radius:3px;background:var(--bg);color:var(--muted);flex-shrink:0}
+        .use-loc-btn{
+          width:100%;margin-bottom:6px;padding:6px 10px;
+          background:rgba(10,143,255,0.1);border:1px solid rgba(10,143,255,0.3);
+          color:var(--blue);border-radius:8px;font-size:11px;font-weight:600;
+          cursor:pointer;text-align:left;font-family:var(--font);
+          display:flex;align-items:center;gap:7px;transition:background .15s
+        }
+        .use-loc-btn:hover{background:rgba(10,143,255,.2)}
+        .use-loc-btn.active{background:rgba(10,143,255,.25);border-color:var(--blue)}
+        .btn-row{display:flex;gap:6px}
+        #find-btn{flex:1;padding:8px;background:var(--accent);color:#061a12;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:opacity .2s}
+        #find-btn:hover{opacity:.85}
+        #find-btn:disabled{opacity:.4;cursor:default}
+        #clear-btn{padding:8px 11px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--font);display:none}
+        #clear-btn.show{display:block}
+        #clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+        /* ── RESULT STATS ── */
+        #result-panel{padding:8px 14px;border-bottom:1px solid var(--border);display:none;flex-shrink:0}
+        #result-panel.show{display:block}
+        .stats{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+        .stat{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border)}
+        .stat:last-child{border:none}
+        .sv{font-size:15px;font-weight:700;color:var(--accent)}
+        .sl{font-size:9px;color:var(--muted);margin-top:1px}
+
+        /* ── TURNS LIST ── */
+        #turns-wrap{flex:1;overflow-y:auto;padding:8px 14px;display:none}
+        #turns-wrap.show{display:flex;flex-direction:column}
+        #turns-wrap h3{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;flex-shrink:0}
+        #turns-list{flex:1;overflow-y:auto}
+        .turn{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;cursor:pointer;border-radius:4px;transition:background .1s}
+        .turn:last-child{border:none}
+        .turn.active-turn{background:rgba(0,200,150,.1);border-color:var(--accent)!important;padding:6px 4px}
+        .turn:hover{background:var(--surface2)}
+        .turn-ic{width:24px;height:24px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+        .turn.active-turn .turn-ic{background:rgba(0,200,150,.2);border-color:var(--accent)}
+        .turn-txt{color:var(--text);line-height:1.4;flex:1}
+        .turn-d{font-size:9px;color:var(--muted);margin-top:1px}
+
+        /* ── LOC LIST ── */
+        #list-wrap{flex:1;overflow-y:auto;padding:8px 14px}
+        #list-wrap h3{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+        #srch{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:11px;outline:none;margin-bottom:7px;font-family:var(--font)}
+        #srch:focus{border-color:var(--accent)}
+        #srch::placeholder{color:var(--muted)}
+        #chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+        .chip{padding:3px 7px;border-radius:20px;font-size:9px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font)}
+        .chip.on{border-color:var(--accent);color:var(--accent);background:rgba(0,200,150,.08)}
+        #loc-list .li{display:flex;align-items:center;gap:8px;padding:6px;border-radius:7px;cursor:pointer}
+        #loc-list .li:hover{background:var(--surface2)}
+        .ldot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .ln{font-size:11px;font-weight:500;color:var(--text);line-height:1.3}
+        .lt{font-size:9px;color:var(--muted)}
+
+        /* ── MAP OVERLAYS ── */
+        #locate-btn{
+          position:absolute;bottom:80px;right:10px;z-index:1000;
+          width:38px;height:38px;border-radius:9px;
+          background:var(--surface2);border:1px solid var(--border);
+          color:var(--blue);font-size:19px;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;
+          box-shadow:0 2px 8px rgba(0,0,0,.5);transition:all .2s
+        }
+        #locate-btn:hover{background:var(--border)}
+        #locate-btn.on{border-color:var(--blue);background:rgba(10,143,255,.2)}
+        #map-controls{
+          position:absolute;top:12px;left:12px;z-index:210;
+          display:none;gap:8px
+        }
+        #map-controls button{
+          padding:8px 12px;border-radius:10px;border:1px solid var(--border);
+          background:rgba(22,34,48,.95);color:var(--text);font-family:var(--font);
+          font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35)
+        }
+        #map-controls button:hover{border-color:var(--accent)}
+
+        #route-sheet{
+          position:absolute;left:12px;right:12px;bottom:12px;z-index:1202;
+          background:rgba(22,34,48,.97);border:1px solid var(--border);border-radius:16px;
+          box-shadow:0 12px 28px rgba(0,0,0,.45);overflow:hidden;display:none
+        }
+        #route-sheet.collapsed{height:92px}
+        #route-sheet.open{max-height:38vh}
+        #route-sheet-head{
+          display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+          padding:12px 12px 8px;border-bottom:1px solid var(--border)
+        }
+        #route-sheet-title{font-size:14px;font-weight:700;color:var(--accent)}
+        #route-sheet-subtitle{font-size:11px;color:var(--muted);margin-top:2px}
+        #route-sheet-head button{
+          width:28px;height:28px;border-radius:8px;border:1px solid var(--border);
+          background:var(--surface2);color:var(--text);cursor:pointer;font-family:var(--font);font-weight:700
+        }
+        #route-sheet-head button:hover{border-color:var(--accent)}
+        #sheet-stats{
+          display:flex;gap:8px;padding:10px 12px 12px
+        }
+        .sheet-stat{
+          flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+          padding:8px 6px;text-align:center
+        }
+        .sheet-num{font-size:15px;font-weight:700;color:var(--accent)}
+        .sheet-lab{font-size:9px;color:var(--muted);margin-top:1px}
+        #sheet-turns{display:none;border-top:1px solid var(--border);padding:10px 12px 12px;max-height:24vh;overflow-y:auto}
+        #route-sheet.open #sheet-turns{display:block}
+        #sheet-turns h3{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+        #sheet-turns-list .turn{padding:7px 0}
+
+        /* OFF-ROUTE badge */
+        #off-route-badge{
+          position:absolute;top:12px;left:50%;transform:translateX(-50%);
+          z-index:1000;background:#ff4d6a;color:#fff;
+          border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;
+          display:none;box-shadow:0 2px 10px rgba(0,0,0,.4);white-space:nowrap
+        }
+        #off-route-badge.show{display:block}
+
+        /* ARRIVAL overlay */
+        #arrival-overlay{
+          position:absolute;inset:0;z-index:2000;
+          background:rgba(0,0,0,.75);display:none;
+          align-items:center;justify-content:center;flex-direction:column;gap:16px
+        }
+        #arrival-overlay.show{display:flex}
+        #arrival-box{
+          background:var(--surface);border:1px solid var(--accent);border-radius:16px;
+          padding:32px 28px;text-align:center;max-width:280px
+        }
+        #arrival-box .arr-icon{font-size:48px;margin-bottom:12px}
+        #arrival-box h2{font-size:20px;font-weight:700;color:var(--accent);margin-bottom:6px}
+        #arrival-box p{font-size:13px;color:var(--muted);margin-bottom:18px}
+        #arrival-box button{padding:10px 24px;background:var(--accent);color:#061a12;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)}
+
+        #toast{
+          position:absolute;bottom:130px;left:50%;transform:translateX(-50%);
+          z-index:1000;background:rgba(15,25,35,.95);border:1px solid var(--border);
+          border-radius:20px;padding:6px 14px;font-size:11px;color:var(--muted);
+          pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .3s
+        }
+        #toast.show{opacity:1}
+
+        .leaflet-routing-container{display:none!important}
+
+        /* Live dot */
+        .live-dot{
+          width:16px;height:16px;border-radius:50%;
+          background:#0a8fff;border:3px solid white;
+          box-shadow:0 0 0 4px rgba(10,143,255,.35);
+          animation:lp 1.8s ease-in-out infinite
+        }
+        @keyframes lp{
+          0%,100%{box-shadow:0 0 0 4px rgba(10,143,255,.35)}
+          50%{box-shadow:0 0 0 12px rgba(10,143,255,.05)}
+        }
+        /* Direction cone — shows heading */
+        .live-heading{
+          width:0;height:0;
+          border-left:7px solid transparent;
+          border-right:7px solid transparent;
+          border-bottom:18px solid rgba(10,143,255,.7);
+          transform-origin:50% 100%;
+          margin:0 auto;
+          display:block
+        }
+    </style>
+</head>
+<body class="search-mode">
+<div id="app">
+
+    <!-- ── SIDEBAR ── -->
+    <div id="sidebar">
+        <div id="logo">
+            <h1>🎓 Parul Campus Navigator</h1>
+            <p>Parul University • Vadodara</p>
+        </div>
+
+        <!-- NAVIGATION BANNER — shown during active navigation -->
+        <div id="nav-banner">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+                <span id="nav-next-turn">⬆</span>
+                <div>
+                    <div id="nav-instruction">Head to your destination</div>
+                    <div id="nav-dist-next"></div>
+                </div>
+            </div>
+            <div id="nav-bottom">
+                <span id="nav-dist-total">–</span>
+                <span id="nav-eta">– min</span>
+                <button id="nav-stop-btn" onclick="clearRoute()">✕ Stop</button>
+            </div>
+        </div>
+
+        <!-- ROUTE INPUTS — hidden during navigation on mobile -->
+        <div id="route-panel">
+            <div class="inp-wrap">
+                <div class="inp-dot" style="border:2px solid #00c896"></div>
+                <input id="from-inp" placeholder="Starting point…" autocomplete="off"
+                       oninput="ddFilter('from')" onfocus="ddOpen('from')" onblur="ddClose('from')"/>
+                <div class="dd" id="from-dd"></div>
+            </div>
+            <button class="use-loc-btn" id="use-loc-btn" onclick="useMyLocation()">
+                <span>📍</span> Use my live location as start
+            </button>
+            <div class="inp-wrap">
+                <div class="inp-dot" style="background:#ff4d6a"></div>
+                <input id="to-inp" placeholder="Destination…" autocomplete="off"
+                       oninput="ddFilter('to')" onfocus="ddOpen('to')" onblur="ddClose('to')"/>
+                <div class="dd" id="to-dd"></div>
+            </div>
+            <div class="btn-row">
+                <button id="find-btn" onclick="findRoute()">Get Directions →</button>
+                <button id="clear-btn" onclick="clearRoute()">✕ Clear</button>
+            </div>
+        </div>
+
+        <div id="result-panel">
+            <div class="stats">
+                <div class="stat"><div class="sv" id="sv-dist">–</div><div class="sl">metres</div></div>
+                <div class="stat"><div class="sv" id="sv-time">–</div><div class="sl">min walk</div></div>
+                <div class="stat"><div class="sv" id="sv-turns">–</div><div class="sl">turns</div></div>
+            </div>
+        </div>
+
+        <div id="turns-wrap">
+            <h3>Turn-by-turn directions</h3>
+            <div id="turns-list"></div>
+        </div>
+
+        <div id="list-wrap">
+            <h3>All Locations</h3>
+            <input id="srch" placeholder="Search campus…" oninput="renderList()"/>
+            <div id="chips"></div>
+            <div id="loc-list"></div>
+        </div>
+    </div>
+
+    <!-- ── MAP ── -->
+    <div id="map-wrap">
+        <div id="map"></div>
+
+        <div id="map-controls">
+            <button id="back-btn" onclick="clearRoute()">← Search</button>
+            <button id="sheet-toggle-btn" onclick="toggleRouteSheet()">Directions</button>
+        </div>
+
+        <div id="route-sheet" class="collapsed">
+            <div id="route-sheet-head">
+                <div>
+                    <div id="route-sheet-title">Route summary</div>
+                    <div id="route-sheet-subtitle">Full map view is active</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0">
+                    <button id="sheet-toggle-mini" onclick="toggleRouteSheet()">▲</button>
+                    <button id="sheet-close" onclick="clearRoute()">✕</button>
+                </div>
+            </div>
+            <div id="sheet-stats">
+                <div class="sheet-stat"><div class="sheet-num" id="sheet-dist">–</div><div class="sheet-lab">metres</div></div>
+                <div class="sheet-stat"><div class="sheet-num" id="sheet-time">–</div><div class="sheet-lab">min walk</div></div>
+                <div class="sheet-stat"><div class="sheet-num" id="sheet-turns">–</div><div class="sheet-lab">turns</div></div>
+            </div>
+            <div id="sheet-turns">
+                <h3>Turn-by-turn directions</h3>
+                <div id="sheet-turns-list"></div>
+            </div>
+        </div>
+
+        <button id="locate-btn" onclick="toggleLocate()" title="Show my location">◎</button>
+        <div id="off-route-badge">📡 Off route — recalculating…</div>
+        <div id="arrival-overlay">
+            <div id="arrival-box">
+                <div class="arr-icon">🏁</div>
+                <h2>You have arrived!</h2>
+                <p id="arrival-dest-name">You reached your destination.</p>
+                <button onclick="clearRoute()">Done</button>
+            </div>
+        </div>
+        <div id="toast"></div>
+    </div>
+
+</div>
+
+<script>
+    // ── BACKEND ──────────────────────────────────────────────────────────────────
+    const BACKEND = 'https://smartcampus-backend-production-a571.up.railway.app';
+
+    // ── LOCATIONS ────────────────────────────────────────────────────────────────
+    const LOCS = [
+      {id:1,name:"Parul Ayurved Hospital",lat:22.288583,lng:73.364833,type:"Hospital"},
+      {id:2,name:"Main Food Court",lat:22.288788,lng:73.364878,type:"Food"},
+      {id:3,name:"PU Circle",lat:22.288600,lng:73.364554,type:"Landmark"},
+      {id:4,name:"Faculty of Engineering & Technology",lat:22.288629,lng:73.364104,type:"Academic"},
+      {id:5,name:"Administrative Block",lat:22.288727,lng:73.363950,type:"Administrative"},
+      {id:6,name:"FET Diploma Studies",lat:22.288866,lng:73.364084,type:"Academic"},
+      {id:7,name:"Super Market",lat:22.289858,lng:73.364570,type:"Shop"},
+      {id:8,name:"Mr Puff",lat:22.289858,lng:73.364638,type:"Food"},
+      {id:9,name:"Tea Post",lat:22.289858,lng:73.364700,type:"Food"},
+      {id:10,name:"PU Fitness Gym",lat:22.289900,lng:73.364570,type:"Gym"},
+      {id:11,name:"Campus Stationary",lat:22.289953,lng:73.364734,type:"Shop"},
+      {id:12,name:"PU Temple",lat:22.290561,lng:73.364990,type:"Religious"},
+      {id:13,name:"Shastri Bhawan-A",lat:22.290600,lng:73.364930,type:"Hostel"},
+      {id:14,name:"Shastri Bhawan-B/C",lat:22.290872,lng:73.365156,type:"Hostel"},
+      {id:15,name:"Faculty of Homoeopathy",lat:22.290654,lng:73.365498,type:"Academic"},
+      {id:16,name:"Faculty of Pharmacy",lat:22.290667,lng:73.366187,type:"Academic"},
+      {id:17,name:"Parul Polytechnic Institute",lat:22.290710,lng:73.366240,type:"Academic"},
+      {id:18,name:"Sarojini Bhawan-A",lat:22.291016,lng:73.366619,type:"Hostel"},
+      {id:19,name:"Sarojini Bhawan-B",lat:22.291394,lng:73.366620,type:"Hostel"},
+      {id:20,name:"U.K Laundry",lat:22.291121,lng:73.366487,type:"Service"},
+      {id:21,name:"School of Pharmacy",lat:22.291218,lng:73.366317,type:"Academic"},
+      {id:22,name:"Marie Curie Residence",lat:22.291127,lng:73.365871,type:"Hostel"},
+      {id:23,name:"Mess-4",lat:22.291850,lng:73.367308,type:"Mess"},
+      {id:24,name:"Indira Bhawan-B",lat:22.291990,lng:73.366879,type:"Hostel"},
+      {id:25,name:"Indira Bhawan-A",lat:22.292010,lng:73.366354,type:"Hostel"},
+      {id:26,name:"Indira Bhawan-C",lat:22.291819,lng:73.366309,type:"Hostel"},
+      {id:27,name:"Dr. R C Shah Medical Library",lat:22.292118,lng:73.366348,type:"Library"},
+      {id:28,name:"Albert Einstein Residence",lat:22.291786,lng:73.365924,type:"Hostel"},
+      {id:29,name:"Kalam Bhawan-A",lat:22.291679,lng:73.365262,type:"Hostel"},
+      {id:30,name:"Kalam Bhawan-B",lat:22.291634,lng:73.365453,type:"Hostel"},
+      {id:31,name:"Kalam Bhawan-C",lat:22.291632,lng:73.365595,type:"Hostel"},
+      {id:32,name:"Tagore Bhawan-A",lat:22.291887,lng:73.364802,type:"Hostel"},
+      {id:33,name:"Kathi Junction",lat:22.292006,lng:73.364786,type:"Food"},
+      {id:34,name:"Tilak Bhawan-B",lat:22.292380,lng:73.365040,type:"Hostel"},
+      {id:35,name:"Tilak Bhawan-A",lat:22.291857,lng:73.365086,type:"Hostel"},
+      {id:36,name:"Mess-3",lat:22.292419,lng:73.365330,type:"Mess"},
+      {id:37,name:"Janki Bhawan",lat:22.292450,lng:73.365380,type:"Hostel"},
+      {id:38,name:"Domino's",lat:22.291174,lng:73.364777,type:"Food"},
+      {id:39,name:"Mess-1",lat:22.291146,lng:73.365158,type:"Mess"},
+      {id:40,name:"Faculty of Pharmacy (PIP)",lat:22.288047,lng:73.364829,type:"Academic"},
+      {id:41,name:"Security Office",lat:22.287767,lng:73.364261,type:"Administrative"},
+      {id:42,name:"Car Parking",lat:22.288163,lng:73.363286,type:"Parking"},
+      {id:43,name:"Bike Parking",lat:22.288028,lng:73.362745,type:"Parking"},
+      {id:44,name:"Faculty of Management Studies (PIBA)",lat:22.288409,lng:73.362913,type:"Academic"},
+      {id:45,name:"Football Ground (Chhetri Complex)",lat:22.289063,lng:73.362821,type:"Sports"},
+      {id:46,name:"Parul Institute of Ayurved",lat:22.289108,lng:73.363366,type:"Academic"},
+      {id:47,name:"University Exam Section",lat:22.289235,lng:73.363545,type:"Administrative"},
+      {id:48,name:"Faculty of Management Studies",lat:22.288924,lng:73.362367,type:"Academic"},
+      {id:49,name:"Kalpana Bhawan-A",lat:22.289387,lng:73.362063,type:"Hostel"},
+      {id:50,name:"Kalpana Bhawan-B",lat:22.289528,lng:73.361812,type:"Hostel"},
+      {id:51,name:"Krishna Food Canteen",lat:22.289862,lng:73.361261,type:"Food"},
+      {id:52,name:"Milkha Bhawan-A",lat:22.289149,lng:73.361017,type:"Hostel"},
+      {id:53,name:"Parul Institute of Architecture & Planning",lat:22.289926,lng:73.361970,type:"Academic"},
+      {id:54,name:"Car Parking 2",lat:22.290286,lng:73.361881,type:"Parking"},
+      {id:55,name:"Indian Salt Eatery / Annapurna Bhavan",lat:22.290442,lng:73.362692,type:"Mess"},
+      {id:56,name:"Bhagat Singh Bhawan",lat:22.291574,lng:73.363222,type:"Hostel"},
+      {id:57,name:"The Champions Cove",lat:22.291858,lng:73.362320,type:"Recreation"},
+      {id:58,name:"CV Raman Center",lat:22.292229,lng:73.363089,type:"Academic"},
+      {id:59,name:"Subhash Chandra Bose Bhawan",lat:22.292926,lng:73.362244,type:"Hostel"},
+      {id:60,name:"Green House / Faculty of Agriculture",lat:22.293258,lng:73.362101,type:"Academic"},
+      {id:61,name:"Bus Stop",lat:22.293709,lng:73.362178,type:"Transport"},
+      {id:62,name:"Tagore Bhawan-B",lat:22.292492,lng:73.363636,type:"Hostel"},
+      {id:63,name:"PIT Food Court",lat:22.286717,lng:73.364645,type:"Food"},
+      {id:64,name:"Vikram Sarabhai Centre",lat:22.286679,lng:73.363803,type:"Academic"},
+      {id:65,name:"Chatori",lat:22.286742,lng:73.363618,type:"Food"},
+      {id:66,name:"R Patel Copy Centre",lat:22.286737,lng:73.365024,type:"Shop"},
+      {id:67,name:"Mr Puff (PIT)",lat:22.286545,lng:73.365016,type:"Food"},
+      {id:68,name:"Training and Placement Cell",lat:22.286420,lng:73.365033,type:"Administrative"},
+      {id:69,name:"PIT Main Gate",lat:22.286213,lng:73.365332,type:"Gate"},
+      {id:70,name:"Parul Institute of Technology",lat:22.286204,lng:73.364870,type:"Academic"},
+      {id:71,name:"Faculty of Hotel Management and Catering Technology",lat:22.286204,lng:73.364870,type:"Academic"},
+      {id:72,name:"Pandit Kulfi",lat:22.286035,lng:73.365039,type:"Food"},
+      {id:73,name:"PIT Car Parking 1",lat:22.285902,lng:73.365026,type:"Parking"},
+      {id:74,name:"Bike and Car Parking 2",lat:22.287033,lng:73.364874,type:"Parking"},
+      {id:75,name:"Jawaharlal Nehru Homoeopathic Medical College Hospital",lat:22.285774,lng:73.364867,type:"Hospital"},
+      {id:76,name:"Parul Institute of Applied Sciences",lat:22.285699,lng:73.364455,type:"Academic"},
+      {id:77,name:"Parul Institute of Pharmaceutical Education and Research",lat:22.285699,lng:73.364455,type:"Academic"},
+      {id:78,name:"PIT Bike Parking 1",lat:22.285731,lng:73.364417,type:"Parking"},
+      {id:79,name:"Sardar Bhawan-A",lat:22.285664,lng:73.363792,type:"Hostel"},
+      {id:80,name:"Mess 6 (PIT)",lat:22.285443,lng:73.363890,type:"Mess"},
+      {id:81,name:"R.O Water Station",lat:22.285286,lng:73.363815,type:"Facility"},
+      {id:82,name:"Sardar Bhawan-B",lat:22.285139,lng:73.363809,type:"Hostel"},
+      {id:83,name:"Food Court 2",lat:22.285940,lng:73.363757,type:"Food"},
+      {id:84,name:"PIT Ground Floor Student Section",lat:22.286194,lng:73.364360,type:"Administrative"}
+    ];
+
+    const TC = {
+      Academic:"#0a8fff",Hostel:"#a78bfa",Food:"#ff7043",Mess:"#ffd166",
+      Administrative:"#00c896",Hospital:"#ff4d6a",Shop:"#4caf50",Gym:"#69f0ae",
+      Religious:"#f472b6",Service:"#90a4ae",Library:"#ce93d8",Parking:"#78909c",
+      Sports:"#26c6da",Recreation:"#80cbc4",Transport:"#ffb300",Landmark:"#ffcc02",
+      Gate:"#ff9800",Facility:"#b0bec5"
+    };
+
+    // ── MAP INIT ──────────────────────────────────────────────────────────────────
+    const map = L.map('map',{center:[22.2905,73.3640],zoom:16,zoomControl:false});
+    L.control.zoom({position:'bottomright'}).addTo(map);
+
+    // ── MODE HELPERS ──────────────────────────────────────────────────────────────
+    document.body.classList.add('search-mode');
+
+    function enterSearchMode(){
+      document.body.classList.remove('map-mode');
+      document.body.classList.add('search-mode');
+      const sheet=document.getElementById('route-sheet');
+      sheet.classList.remove('show','open');
+      sheet.classList.add('collapsed');
+      setTimeout(()=>map.invalidateSize(),60);
+    }
+
+    function enterMapMode(){
+      document.body.classList.remove('search-mode');
+      document.body.classList.add('map-mode');
+      const sheet=document.getElementById('route-sheet');
+      sheet.classList.add('show');
+      sheet.classList.add('collapsed');
+      sheet.classList.remove('open');
+      setTimeout(()=>map.invalidateSize(),120);
+    }
+
+    function toggleRouteSheet(forceOpen){
+      const sheet=document.getElementById('route-sheet');
+      const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !sheet.classList.contains('open');
+      sheet.classList.add('show');
+      sheet.classList.toggle('open',shouldOpen);
+      sheet.classList.toggle('collapsed',!shouldOpen);
+      const mini=document.getElementById('sheet-toggle-mini');
+      const btn=document.getElementById('sheet-toggle-btn');
+      if(mini) mini.textContent=shouldOpen?'▼':'▲';
+      if(btn) btn.textContent=shouldOpen?'Hide directions':'Directions';
+      setTimeout(()=>map.invalidateSize(),60);
+    }
+
+    function renderRouteSheet(dist,mins){
+      const list=document.getElementById('sheet-turns-list');
+      const filtered=navInstructions.filter(i=>!['WaypointReached','DestinationReached'].includes(i.type));
+      document.getElementById('sheet-dist').textContent=dist;
+      document.getElementById('sheet-time').textContent=mins;
+      document.getElementById('sheet-turns').textContent=filtered.length;
+      list.innerHTML=navInstructions.map((ins,i)=>`
+        <div class="turn${i===navStepIndex?' active-turn':''}">
+          <div class="turn-ic">${turnIcon(ins.type)}</div>
+          <div style="flex:1">
+            <div class="turn-txt">${ins.text}</div>
+            ${ins.distance>0?`<div class="turn-d">${fmt(ins.distance)}</div>`:''}
+          </div>
+        </div>`).join('');
+    }
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© OpenStreetMap contributors',maxZoom:19
+    }).addTo(map);
+
+    // ── CAMPUS MARKERS ────────────────────────────────────────────────────────────
+    const mkrs={};
+    LOCS.forEach(loc=>{
+      const c=TC[loc.type]||'#888';
+      const icon=L.divIcon({
+        className:'',
+        html:`<div style="width:11px;height:11px;border-radius:50%;background:${c};border:2px solid rgba(0,0,0,.5);box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`,
+        iconSize:[11,11],iconAnchor:[5,5]
+      });
+      mkrs[loc.id]=L.marker([loc.lat,loc.lng],{icon}).addTo(map)
+        .bindPopup(`<div style="font-family:Inter,sans-serif;min-width:240px;word-wrap:break-word">
+          <div style="font-weight:700;font-size:13px;margin-bottom:3px">${loc.name}</div>
+          <div style="font-size:11px;color:#888;margin-bottom:10px">${loc.type}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button onclick="setPoint('from',${loc.id})" style="flex:1;min-width:65px;padding:6px;background:#00c896;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;color:#061a12">▶ Start</button>
+            <button onclick="setPoint('to',${loc.id})" style="flex:1;min-width:65px;padding:6px;background:#ff4d6a;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;color:#fff">End</button>
+          </div>
+        </div>`,{maxWidth:300,className:''});
+    });
+
+    // ── LIVE LOCATION ─────────────────────────────────────────────────────────────
+    let liveDot=null,liveCircle=null,liveWatch=null,liveOn=false;
+    let liveLat=null,liveLng=null,liveHeading=null;
+    let usingLiveStart=false;
+    let followMode=false; // pan map to user while navigating
+
+    function toast(msg,dur=3000){
+      const t=document.getElementById('toast');
+      t.textContent=msg;t.classList.add('show');
+      if(dur) setTimeout(()=>t.classList.remove('show'),dur);
+    }
+
+    function toggleLocate(){
+      if(liveOn){stopLocate();return;}
+      startLocate(true);
+    }
+
+    function startLocate(panToUser){
+      if(!navigator.geolocation){alert('Geolocation not supported.');return;}
+      document.getElementById('locate-btn').textContent='⏳';
+      toast('Finding your location…',0);
+      // First try high accuracy
+      navigator.geolocation.getCurrentPosition(
+        pos=>gotLocation(pos,panToUser),
+        err=>{
+          // If high accuracy fails, try low accuracy as fallback
+          if(err.code===3||err.code===2){
+            toast('Trying alternate location method…',0);
+            navigator.geolocation.getCurrentPosition(
+              pos=>gotLocation(pos,panToUser),
+              err2=>locationErr(err2),
+              {enableHighAccuracy:false,timeout:20000,maximumAge:60000}
+            );
+          } else {
+            locationErr(err);
+          }
+        },
+        {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+      );
+    }
+
+    function gotLocation(pos,panToUser){
+      liveLat=pos.coords.latitude;
+      liveLng=pos.coords.longitude;
+      liveHeading=pos.coords.heading;
+      const acc=Math.round(pos.coords.accuracy);
+      liveOn=true;
+
+      const btn=document.getElementById('locate-btn');
+      btn.textContent='◉';btn.classList.add('on');
+
+      updateLiveDot(liveLat,liveLng,acc);
+
+      if(panToUser) map.setView([liveLat,liveLng],17);
+      toast(`📍 Location found (±${acc}m)`,3000);
+
+      if(usingLiveStart) document.getElementById('from-inp').value='📍 My Location';
+
+      if(!liveWatch){
+        liveWatch=navigator.geolocation.watchPosition(p=>{
+          liveLat=p.coords.latitude;liveLng=p.coords.longitude;
+          liveHeading=p.coords.heading;
+          updateLiveDot(liveLat,liveLng,Math.round(p.coords.accuracy));
+          // Always pan to follow user when location is on AND navigating
+          if(followMode && navigating){
+            map.setView([liveLat,liveLng],18,{animate:true,duration:0.5});
+          }
+          // Check navigation progress
+          if(navigating) checkNavProgress();
+        },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+      }
+    }
+
+    function updateLiveDot(lat,lng,acc){
+      if(liveCircle) map.removeLayer(liveCircle);
+      if(liveDot) liveDot.setLatLng([lat,lng]);
+      else {
+        const dotIcon=L.divIcon({
+          className:'',
+          html:'<div class="live-dot"></div>',
+          iconSize:[16,16],iconAnchor:[8,8]
+        });
+        liveDot=L.marker([lat,lng],{icon:dotIcon,zIndexOffset:2000})
+          .addTo(map).bindPopup('<b>📍 You are here</b>');
+      }
+      liveCircle=L.circle([lat,lng],{
+        radius:acc,color:'#0a8fff',fillColor:'#0a8fff',
+        fillOpacity:0.1,weight:1,dashArray:'4'
+      }).addTo(map);
+    }
+
+    function locationErr(err){
+      document.getElementById('locate-btn').textContent='◎';
+      document.getElementById('locate-btn').classList.remove('on');
+      liveOn=false;
+      const msgs={
+        1:'Location permission denied.\n\nGo to Settings → Apps → SmartCampus → Permissions → Location → Allow.',
+        2:'Location unavailable.\n\nMake sure GPS is ON:\nSettings → Location → turn ON → set to High Accuracy.',
+        3:'Location timed out.\n\nTrying low-accuracy fallback…\n\nIf this keeps happening:\n1. Go outside or near a window\n2. Turn on GPS in Settings\n3. Set Location mode to High Accuracy'
+      };
+      toast('❌ Location unavailable',4000);
+      alert('❌ '+(msgs[err.code]||err.message));
+    }
+
+    function stopLocate(){
+      if(liveWatch){navigator.geolocation.clearWatch(liveWatch);liveWatch=null;}
+      if(liveDot){map.removeLayer(liveDot);liveDot=null;}
+      if(liveCircle){map.removeLayer(liveCircle);liveCircle=null;}
+      liveOn=false;liveLat=null;liveLng=null;
+      document.getElementById('locate-btn').textContent='◎';
+      document.getElementById('locate-btn').classList.remove('on');
+      if(usingLiveStart) cancelLiveStart();
+    }
+
+    function useMyLocation(){
+      const btn=document.getElementById('use-loc-btn');
+      if(usingLiveStart){cancelLiveStart();return;}
+      usingLiveStart=true;
+      btn.classList.add('active');
+      btn.innerHTML='<span>✓</span> Using my live location';
+      document.getElementById('from-inp').value='📍 My Location';
+      fromId=null;
+      if(!liveOn) startLocate(true);
+    }
+    function cancelLiveStart(){
+      usingLiveStart=false;
+      const btn=document.getElementById('use-loc-btn');
+      btn.classList.remove('active');
+      btn.innerHTML='<span>📍</span> Use my live location as start';
+      document.getElementById('from-inp').value='';
+    }
+
+    // ── ROUTING & NAVIGATION ──────────────────────────────────────────────────────
+    let routeCtrl=null,fromId=null,toId=null;
+    let navigating=false;
+    let navInstructions=[];  // full instruction list from OSRM
+    let navStepIndex=0;      // current step we're on
+    let destLat=null,destLng=null,destName='';
+    let rerouteTimeout=null;
+    const OFF_ROUTE_DIST=40;   // metres before rerouting
+    const ARRIVAL_DIST=20;     // metres to trigger arrival
+
+    function setPoint(which,id){
+      const loc=LOCS.find(l=>l.id===id);
+      if(which==='from'){
+        fromId=id;usingLiveStart=false;cancelLiveStart();
+        document.getElementById('from-inp').value=loc.name;
+      } else {
+        toId=id;
+        document.getElementById('to-inp').value=loc.name;
+      }
+      map.closePopup();
+    }
+
+    function getFromLatLng(){
+      if(usingLiveStart&&liveLat!==null) return L.latLng(liveLat,liveLng);
+      if(fromId){const l=LOCS.find(x=>x.id===fromId);return L.latLng(l.lat,l.lng);}
+      return null;
+    }
+    function getToLatLng(){
+      if(toId){const l=LOCS.find(x=>x.id===toId);return L.latLng(l.lat,l.lng);}
+      return null;
+    }
+
+    async function findRoute(){
+      const from=getFromLatLng(),to=getToLatLng();
+      if(!from){alert('Please select a starting point or tap "Use my live location".');return;}
+      if(!to){alert('Please select a destination.');return;}
+      if(usingLiveStart&&!liveOn){toast('Getting your location…',0);startLocate(false);setTimeout(findRoute,3000);return;}
+
+      // If both points are named campus locations, use backend A* for stats
+      if(fromId && toId){
+        const fromLoc=LOCS.find(l=>l.id===fromId);
+        const toLoc=LOCS.find(l=>l.id===toId);
+        try {
+          toast('Getting A* route from server…',0);
+          const res=await fetch(`${BACKEND}/route?start=${encodeURIComponent(fromLoc.name)}&end=${encodeURIComponent(toLoc.name)}`);
+          const data=await res.json();
+          if(data.shortestPath && data.route){
+            // Build waypoints from backend A* path for accurate campus routing
+            const waypoints=data.route.map(loc=>L.latLng(loc.latitude,loc.longitude));
+            // Show backend stats
+            document.getElementById('sv-dist').textContent=data.totalDistance.replace(' meters','');
+            document.getElementById('sv-time').textContent=data.estimatedWalkingTime.replace(' minutes','');
+            document.getElementById('sv-turns').textContent=data.totalSteps-1;
+            document.getElementById('result-panel').classList.add('show');
+            // Show path steps in sidebar
+            const tl=document.getElementById('turns-list');
+            tl.innerHTML=data.shortestPath.map((name,i)=>`
+              <div class="turn">
+                <div class="turn-ic">${i===0?'🟢':i===data.shortestPath.length-1?'🏁':'📍'}</div>
+                <div><div class="turn-txt">${name}</div></div>
+              </div>`).join('');
+            document.getElementById('turns-wrap').classList.add('show');
+            document.getElementById('list-wrap').style.display='none';
+            document.getElementById('clear-btn').classList.add('show');
+            enterMapMode();
+            renderRouteSheet(parseInt(data.totalDistance)||0, parseInt(data.estimatedWalkingTime)||0);
+            // Store dest info for arrival detection
+            destLat=toLoc.lat;destLng=toLoc.lng;
+            destName=toLoc.name;
+            // Draw road geometry via OSRM using backend waypoints
+            doRouteWithWaypoints(waypoints);
+            return;
+          }
+        } catch(e){
+          console.warn('Backend unavailable, falling back to OSRM:',e);
+          toast('Server unavailable — using fallback routing',3000);
+        }
+      }
+
+      // Fallback: direct OSRM from point A to B
+      doRoute(from,to);
+    }
+
+    function doRouteWithWaypoints(waypoints){
+      if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+      document.getElementById('find-btn').disabled=true;
+
+      routeCtrl=L.Routing.control({
+        waypoints,
+        router:new L.Routing.OSRMv1({
+          serviceUrl:'https://router.project-osrm.org/route/v1',
+          profile:'foot'
+        }),
+        lineOptions:{
+          styles:[
+            {color:'#004d38',opacity:0.5,weight:10},
+            {color:'#00c896',opacity:1,weight:4}
+          ],
+          extendToWaypoints:true,
+          missingRouteTolerance:0
+        },
+        createMarker:()=>null,
+        addWaypoints:false,
+        draggableWaypoints:false,
+        fitSelectedRoutes:true,
+        show:false
+      }).addTo(map);
+
+      routeCtrl.on('routesfound',e=>{
+        document.getElementById('find-btn').disabled=false;
+        const r=e.routes[0];
+        navInstructions=r.instructions||[];
+        navStepIndex=0;
+        document.getElementById('toast').classList.remove('show');
+        if(usingLiveStart&&liveOn){
+          enterNavMode(
+            parseInt(document.getElementById('sv-dist').textContent)||Math.round(r.summary.totalDistance),
+            parseInt(document.getElementById('sv-time').textContent)||Math.ceil(r.summary.totalTime/60)
+          );
+        }
+      });
+
+      routeCtrl.on('routingerror',()=>{
+        document.getElementById('find-btn').disabled=false;
+        toast('⚠ Road drawing failed — showing path markers only',4000);
+      });
+    }
+
+    function doRoute(from,to){
+      if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+      toast('Calculating route…',0);
+      document.getElementById('find-btn').disabled=true;
+
+      routeCtrl=L.Routing.control({
+        waypoints:[from,to],
+        router:new L.Routing.OSRMv1({
+          serviceUrl:'https://router.project-osrm.org/route/v1',
+          profile:'foot'
+        }),
+        lineOptions:{
+          styles:[
+            {color:'#004d38',opacity:0.5,weight:10},
+            {color:'#00c896',opacity:1,weight:4}
+          ],
+          extendToWaypoints:true,
+          missingRouteTolerance:0
+        },
+        createMarker:()=>null,
+        addWaypoints:false,
+        draggableWaypoints:false,
+        fitSelectedRoutes:true,
+        show:false
+      }).addTo(map);
+
+      routeCtrl.on('routesfound',e=>{
+        document.getElementById('find-btn').disabled=false;
+        const r=e.routes[0];
+        const dist=Math.round(r.summary.totalDistance);
+        const mins=Math.ceil(r.summary.totalTime/60);
+        navInstructions=r.instructions||[];
+        navStepIndex=0;
+
+        // Store destination
+        const toLoc=getToLatLng();
+        destLat=toLoc.lat;destLng=toLoc.lng;
+        destName=toId?LOCS.find(l=>l.id===toId)?.name||'Destination':'Destination';
+
+        // Stats
+        document.getElementById('sv-dist').textContent=dist;
+        document.getElementById('sv-time').textContent=mins;
+        document.getElementById('sv-turns').textContent=navInstructions.filter(i=>!['WaypointReached','DestinationReached','Head'].includes(i.type)).length;
+        document.getElementById('result-panel').classList.add('show');
+
+        // Render turn list
+        renderTurnList();
+        document.getElementById('turns-wrap').classList.add('show');
+        document.getElementById('list-wrap').style.display='none';
+        document.getElementById('clear-btn').classList.add('show');
+        document.getElementById('toast').classList.remove('show');
+        enterMapMode();
+        renderRouteSheet(dist,mins);
+        // Auto-open the directions sheet to show turns
+        toggleRouteSheet(true);
+
+        // Enter navigation mode if using live location
+        if(usingLiveStart&&liveOn){
+          enterNavMode(dist,mins);
+        }
+      });
+
+      routeCtrl.on('routingerror',()=>{
+        document.getElementById('find-btn').disabled=false;
+        toast('⚠ Route failed — check connection',5000);
+      });
+    }
+
+    function renderTurnList(){
+      const tl=document.getElementById('turns-list');
+      tl.innerHTML='';
+      navInstructions.forEach((ins,i)=>{
+        const ic=turnIcon(ins.type);
+        const div=document.createElement('div');
+        div.className='turn'+(i===navStepIndex?' active-turn':'');
+        div.id='turn-'+i;
+        div.innerHTML=`<div class="turn-ic">${ic}</div>
+          <div style="flex:1">
+            <div class="turn-txt">${ins.text}</div>
+            ${ins.distance>0?`<div class="turn-d">${fmt(ins.distance)}</div>`:''}
+          </div>`;
+        div.onclick=()=>{ /* tap a step to see it on map */ };
+        tl.appendChild(div);
+      });
+    }
+
+    function fmt(m){
+      return m>=1000?(m/1000).toFixed(1)+'km':Math.round(m)+'m';
+    }
+
+    function enterNavMode(dist,mins){
+      navigating=true;
+      followMode=true;
+      document.getElementById('sidebar').classList.add('nav-mode');
+      document.getElementById('nav-banner').classList.add('show');
+      document.getElementById('route-panel').style.display='none';
+      updateNavBanner(dist,mins);
+      enterMapMode();
+      toggleRouteSheet(false);
+      // Pan and zoom to user position
+      if(liveLat&&liveLng){
+        map.setView([liveLat,liveLng],18,{animate:true,duration:0.8});
+      }
+      toast('📍 Navigation started — map will follow you',3000);
+    }
+
+    function updateNavBanner(distRemaining,minsRemaining){
+      if(navStepIndex<navInstructions.length){
+        const step=navInstructions[navStepIndex];
+        document.getElementById('nav-next-turn').textContent=turnIcon(step.type);
+        document.getElementById('nav-instruction').textContent=step.text;
+        document.getElementById('nav-dist-next').textContent=step.distance>0?'In '+fmt(step.distance):'';
+      }
+      document.getElementById('nav-dist-total').textContent=fmt(distRemaining)+' remaining';
+      document.getElementById('nav-eta').textContent=minsRemaining+' min';
+    }
+
+    // Called every time GPS updates during navigation
+    function checkNavProgress(){
+      if(!navigating||destLat===null) return;
+
+      const userLL=L.latLng(liveLat,liveLng);
+      const destLL=L.latLng(destLat,destLng);
+
+      // 1. Arrival check
+      const distToDest=userLL.distanceTo(destLL);
+      if(distToDest<=ARRIVAL_DIST){
+        triggerArrival();
+        return;
+      }
+
+      // 2. Update remaining distance display
+      const mins=Math.ceil(distToDest/80/60*1000); // ~80m/min walking
+      updateNavBanner(Math.round(distToDest),Math.max(1,Math.ceil(distToDest/80)));
+
+      // 3. Advance step index when user is close to next waypoint
+      if(navStepIndex<navInstructions.length-1){
+        const step=navInstructions[navStepIndex];
+        // highlight next step in list
+        document.querySelectorAll('.turn').forEach((el,i)=>{
+          el.classList.toggle('active-turn',i===navStepIndex);
+        });
+        // auto-scroll turn list
+        const activeEl=document.getElementById('turn-'+navStepIndex);
+        if(activeEl) activeEl.scrollIntoView({block:'nearest',behavior:'smooth'});
+      }
+
+      // 4. Off-route detection — check distance from user to route line
+      if(routeCtrl){
+        const routeLL=routeCtrl.getWaypoints();
+        if(routeLL.length>=2){
+          // Simple check: distance to destination still going down?
+          // If user strays more than OFF_ROUTE_DIST from any route point, reroute
+          checkOffRoute(userLL);
+        }
+      }
+    }
+
+    function checkOffRoute(userLL){
+      // Get the route's polyline points for proximity check
+      if(!routeCtrl||!routeCtrl._line) return;
+      const latlngs=routeCtrl._line.getLatLngs();
+      if(!latlngs||latlngs.length===0) return;
+
+      let minDist=Infinity;
+      latlngs.forEach(ll=>{
+        const d=userLL.distanceTo(ll);
+        if(d<minDist) minDist=d;
+      });
+
+      const badge=document.getElementById('off-route-badge');
+      if(minDist>OFF_ROUTE_DIST){
+        badge.classList.add('show');
+        // Debounce reroute — wait 3s before recalculating
+        if(!rerouteTimeout){
+          rerouteTimeout=setTimeout(()=>{
+            rerouteTimeout=null;
+            badge.classList.remove('show');
+            toast('Recalculating route…',2000);
+            const to=getToLatLng();
+            if(to) doRoute(L.latLng(liveLat,liveLng),to);
+          },3000);
+        }
+      } else {
+        badge.classList.remove('show');
+        if(rerouteTimeout){clearTimeout(rerouteTimeout);rerouteTimeout=null;}
+      }
+    }
+
+    function triggerArrival(){
+      navigating=false;followMode=false;
+      document.getElementById('arrival-dest-name').textContent='You reached '+destName;
+      document.getElementById('arrival-overlay').classList.add('show');
+      // Stop the watch panning
+      if(rerouteTimeout){clearTimeout(rerouteTimeout);rerouteTimeout=null;}
+    }
+
+    function clearRoute(){
+      if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+      fromId=null;toId=null;
+      navigating=false;followMode=false;
+      navInstructions=[];navStepIndex=0;
+      destLat=null;destLng=null;
+      if(rerouteTimeout){clearTimeout(rerouteTimeout);rerouteTimeout=null;}
+
+      if(usingLiveStart) cancelLiveStart();
+      else document.getElementById('from-inp').value='';
+      document.getElementById('to-inp').value='';
+      document.getElementById('result-panel').classList.remove('show');
+      document.getElementById('turns-wrap').classList.remove('show');
+      document.getElementById('list-wrap').style.display='';
+      document.getElementById('clear-btn').classList.remove('show');
+      document.getElementById('off-route-badge').classList.remove('show');
+      document.getElementById('arrival-overlay').classList.remove('show');
+      document.getElementById('nav-banner').classList.remove('show');
+      document.getElementById('sidebar').classList.remove('nav-mode');
+      document.getElementById('route-panel').style.display='';
+      document.getElementById('find-btn').disabled=false;
+      enterSearchMode();
+    }
+
+    function turnIcon(t){
+      return {
+        Head:'⬆',Continue:'⬆',Straight:'⬆',
+        SlightRight:'↗',Right:'➡',SharpRight:'↪',
+        TurnAround:'↩',SharpLeft:'↩',Left:'⬅',SlightLeft:'↖',
+        WaypointReached:'📍',DestinationReached:'🏁',
+        EnterRoundAbout:'🔄',LeaveRoundAbout:'🔄'
+      }[t]||'⬆';
+    }
+
+    // ── DROPDOWNS ─────────────────────────────────────────────────────────────────
+    let ddT={};
+    function ddFilter(w){
+      const v=document.getElementById(w+'-inp').value.toLowerCase();
+      ddRender(w,LOCS.filter(l=>l.name.toLowerCase().includes(v)||l.type.toLowerCase().includes(v)).slice(0,8));
+      document.getElementById(w+'-dd').classList.add('open');
+    }
+    function ddOpen(w){
+      const v=document.getElementById(w+'-inp').value.toLowerCase();
+      ddRender(w,v?LOCS.filter(l=>l.name.toLowerCase().includes(v)).slice(0,8):LOCS.slice(0,8));
+      document.getElementById(w+'-dd').classList.add('open');
+    }
+    function ddClose(w){ddT[w]=setTimeout(()=>document.getElementById(w+'-dd').classList.remove('open'),180);}
+    function ddRender(w,locs){
+      document.getElementById(w+'-dd').innerHTML=locs.map(l=>`
+        <div class="ddi" onmousedown="ddPick('${w}',${l.id})">
+          <div style="width:7px;height:7px;border-radius:50%;background:${TC[l.type]||'#888'};flex-shrink:0"></div>
+          ${l.name}<span class="ddi-badge">${l.type}</span>
+        </div>`).join('');
+    }
+    function ddPick(w,id){
+      clearTimeout(ddT[w]);
+      const loc=LOCS.find(l=>l.id===id);
+      document.getElementById(w+'-dd').classList.remove('open');
+      if(w==='from'){fromId=id;usingLiveStart=false;cancelLiveStart();document.getElementById('from-inp').value=loc.name;}
+      else{toId=id;document.getElementById('to-inp').value=loc.name;}
+      map.setView([loc.lat,loc.lng],17);mkrs[id].openPopup();
+    }
+
+    // ── LOCATION LIST ─────────────────────────────────────────────────────────────
+    let activeChip=null;
+    const allTypes=[...new Set(LOCS.map(l=>l.type))].sort();
+    function renderChips(){
+      document.getElementById('chips').innerHTML=allTypes.map(t=>`
+        <button class="chip${activeChip===t?' on':''}" onclick="toggleChip('${t}')"
+          style="${activeChip===t?'border-color:'+TC[t]+';color:'+TC[t]:''}">${t}</button>`).join('');
+    }
+    function toggleChip(t){activeChip=activeChip===t?null:t;renderChips();renderList();}
+    function renderList(){
+      const q=document.getElementById('srch').value.toLowerCase();
+      const f=LOCS.filter(l=>(!q||l.name.toLowerCase().includes(q)||l.type.toLowerCase().includes(q))&&(!activeChip||l.type===activeChip));
+      document.getElementById('loc-list').innerHTML=f.map(l=>`
+        <div class="li" onclick="focusLoc(${l.id})">
+          <div class="ldot" style="background:${TC[l.type]||'#888'}"></div>
+          <div><div class="ln">${l.name}</div><div class="lt">${l.type}</div></div>
+        </div>`).join('');
+    }
+    function focusLoc(id){
+      const l=LOCS.find(x=>x.id===id);
+      map.setView([l.lat,l.lng],18);mkrs[id].openPopup();
+    }
+
+    renderChips();renderList();
+</script>
+</body>
+</html>

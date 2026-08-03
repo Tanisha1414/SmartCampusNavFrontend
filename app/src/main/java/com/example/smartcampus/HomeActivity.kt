@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +30,11 @@ class HomeActivity : ComponentActivity() {
             SmartCampusTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
                     HomeScreen(
-                        onNavigateToSearch = {
-                            startActivity(Intent(this, SearchActivity::class.java))
+                        onNavigateToSearch = { query ->
+                            // INTENT: Connecting search bar/categories to SearchActivity
+                            val intent = Intent(this, SearchActivity::class.java)
+                            intent.putExtra("SEARCH_QUERY", query)
+                            startActivity(intent)
                         },
                         onNavigateToMap = {
                             startActivity(Intent(this, MapActivity::class.java))
@@ -46,7 +50,11 @@ class HomeActivity : ComponentActivity() {
 }
 
 @Composable
-fun HomeScreen(onNavigateToSearch: () -> Unit, onNavigateToMap: () -> Unit, onNavigateToAccount: () -> Unit) {
+fun HomeScreen(
+    onNavigateToSearch: (String) -> Unit, 
+    onNavigateToMap: () -> Unit, 
+    onNavigateToAccount: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -58,10 +66,10 @@ fun HomeScreen(onNavigateToSearch: () -> Unit, onNavigateToMap: () -> Unit, onNa
             painter = painterResource(id = R.drawable.home_screen),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop 
+            contentScale = ContentScale.Crop
         )
 
-        // 2. Functional Layer (Invisible)
+        // 2. Functional Layer (Invisible clickable areas)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -70,30 +78,30 @@ fun HomeScreen(onNavigateToSearch: () -> Unit, onNavigateToMap: () -> Unit, onNa
         ) {
             Spacer(modifier = Modifier.height(180.dp))
 
-            // Search Bar Area -> SearchActivity
+            // Search Bar Area -> Opens Search screen
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp)
                     .padding(horizontal = 16.dp)
-                    .clickable { onNavigateToSearch() }
+                    .clickable { onNavigateToSearch("") }
             )
 
             Spacer(modifier = Modifier.height(130.dp))
 
-            // Icon Click Areas
+            // Icon Click Areas - Connected to Search screen
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                Box(modifier = Modifier.size(90.dp).clickable { /* Canteen */ })
-                Box(modifier = Modifier.size(90.dp).clickable { /* Departments */ })
-                Box(modifier = Modifier.size(90.dp).clickable { /* Events */ })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Canteen") })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Departments") })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Events") })
             }
 
             Spacer(modifier = Modifier.height(70.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                Box(modifier = Modifier.size(90.dp).clickable { /* Admin Block */ })
-                Box(modifier = Modifier.size(90.dp).clickable { /* Libraries */ })
-                Box(modifier = Modifier.size(90.dp).clickable { /* Buildings */ })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Admin") })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Library") })
+                Box(modifier = Modifier.size(90.dp).clickable { onNavigateToSearch("Building") })
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -108,7 +116,7 @@ fun HomeScreen(onNavigateToSearch: () -> Unit, onNavigateToMap: () -> Unit, onNa
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { /* Home */ })
-                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToSearch() })
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToSearch("") })
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToMap() })
                 Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable { onNavigateToAccount() })
             }

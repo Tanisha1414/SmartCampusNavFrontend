@@ -97,7 +97,7 @@ fun RouteScreen(
                     .fillMaxWidth()
                     .height(60.dp)
                      .padding(horizontal = 40.dp)
-                    .clickable { /* Start Navigation */ }
+                    .clickable { onNavigateToMap() }
             )
 
             Spacer(modifier = Modifier.height(30.dp))
