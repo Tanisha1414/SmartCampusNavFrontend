@@ -70,19 +70,23 @@
 
         /* ── NAV BANNER (shows during navigation) ── */
         #nav-banner{
-          display:none;flex-shrink:0;
-          background:linear-gradient(135deg,#00c896,#007a5e);
-          padding:10px 14px;cursor:pointer
+          position:absolute;top:12px;left:12px;right:12px;z-index:1400;
+          display:none;
+          background:linear-gradient(135deg,#0F2027,#203A43,#2C5364);
+          border:1px solid rgba(0,230,118,0.4);
+          box-shadow:0 8px 24px rgba(0,0,0,0.6);
+          border-radius:16px;
+          padding:12px 14px;cursor:pointer
         }
         #nav-banner.show{display:block}
         #nav-next-turn{font-size:22px;margin-right:8px}
         #nav-instruction{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
-        #nav-dist-next{font-size:11px;color:rgba(255,255,255,.75);margin-top:2px}
-        #nav-bottom{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.2)}
+        #nav-dist-next{font-size:11px;color:rgba(0,230,118,0.9);font-weight:600;margin-top:2px}
+        #nav-bottom{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.15)}
         #nav-dist-total{font-size:12px;color:rgba(255,255,255,.9);font-weight:600}
         #nav-eta{font-size:11px;color:rgba(255,255,255,.7);margin-left:auto}
-        #nav-stop-btn{padding:5px 10px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font);font-weight:600}
-        #nav-stop-btn:hover{background:rgba(255,255,255,.35)}
+        #nav-stop-btn{padding:5px 10px;background:rgba(255,82,82,.25);border:1px solid rgba(255,82,82,.5);color:#ff5252;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font);font-weight:600}
+        #nav-stop-btn:hover{background:rgba(255,82,82,.4)}
 
         /* ── ROUTE PANEL ── */
         #route-panel{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -156,18 +160,20 @@
         .lt{font-size:9px;color:var(--muted)}
 
         /* ── MAP OVERLAYS ── */
+        .leaflet-control-attribution{display:none!important}
         #locate-btn{
-          position:absolute;bottom:80px;right:10px;z-index:1000;
-          width:38px;height:38px;border-radius:9px;
-          background:var(--surface2);border:1px solid var(--border);
-          color:var(--blue);font-size:19px;cursor:pointer;
+          position:absolute;bottom:116px;right:16px;z-index:1300;
+          width:42px;height:42px;border-radius:12px;
+          background:var(--surface);border:1px solid var(--border);
+          color:var(--blue);font-size:20px;cursor:pointer;
           display:flex;align-items:center;justify-content:center;
-          box-shadow:0 2px 8px rgba(0,0,0,.5);transition:all .2s
+          box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s
         }
+        body.search-mode #locate-btn{bottom:24px}
         #locate-btn:hover{background:var(--border)}
         #locate-btn.on{border-color:var(--blue);background:rgba(10,143,255,.2)}
         #map-controls{
-          position:absolute;top:12px;left:12px;z-index:210;
+          position:absolute;top:12px;left:12px;z-index:1300;
           display:none;gap:8px
         }
         #map-controls button{
@@ -180,23 +186,24 @@
         #route-sheet{
           position:absolute;left:12px;right:12px;bottom:12px;z-index:1202;
           background:rgba(22,34,48,.97);border:1px solid var(--border);border-radius:16px;
-          box-shadow:0 12px 28px rgba(0,0,0,.45);overflow:hidden;display:none
+          box-shadow:0 12px 28px rgba(0,0,0,.45);overflow:hidden;display:none;
+          transition:max-height .3s ease
         }
-        #route-sheet.collapsed{height:92px}
-        #route-sheet.open{max-height:38vh}
+        #route-sheet.collapsed{max-height:104px}
+        #route-sheet.open{max-height:48vh}
         #route-sheet-head{
-          display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
-          padding:12px 12px 8px;border-bottom:1px solid var(--border)
+          display:flex;justify-content:space-between;align-items:center;gap:12px;
+          padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer
         }
         #route-sheet-title{font-size:14px;font-weight:700;color:var(--accent)}
         #route-sheet-subtitle{font-size:11px;color:var(--muted);margin-top:2px}
         #route-sheet-head button{
-          width:28px;height:28px;border-radius:8px;border:1px solid var(--border);
+          width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
           background:var(--surface2);color:var(--text);cursor:pointer;font-family:var(--font);font-weight:700
         }
         #route-sheet-head button:hover{border-color:var(--accent)}
         #sheet-stats{
-          display:flex;gap:8px;padding:10px 12px 12px
+          display:flex;gap:8px;padding:8px 12px
         }
         .sheet-stat{
           flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
@@ -204,10 +211,10 @@
         }
         .sheet-num{font-size:15px;font-weight:700;color:var(--accent)}
         .sheet-lab{font-size:9px;color:var(--muted);margin-top:1px}
-        #sheet-turns{display:none;border-top:1px solid var(--border);padding:10px 12px 12px;max-height:24vh;overflow-y:auto}
+        #sheet-turns{display:none;border-top:1px solid var(--border);padding:10px 12px 14px;max-height:28vh;overflow-y:auto}
         #route-sheet.open #sheet-turns{display:block}
-        #sheet-turns h3{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
-        #sheet-turns-list .turn{padding:7px 0}
+        #sheet-turns h3{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+        #sheet-turns-list .turn{padding:8px 4px;border-bottom:1px solid var(--border)}
 
         /* OFF-ROUTE badge */
         #off-route-badge{
@@ -240,9 +247,59 @@
           border-radius:20px;padding:6px 14px;font-size:11px;color:var(--muted);
           pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .3s
         }
-        #toast.show{opacity:1}
+        /* HIDE DEFAULT OSRM ROUTING CONTAINER OVERLAY */
+        .leaflet-routing-container,
+        .leaflet-routing-container-hide,
+        .leaflet-routing-alt,
+        .leaflet-top.leaflet-right .leaflet-routing-container,
+        .leaflet-control-container .leaflet-routing-container {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
 
-        .leaflet-routing-container{display:none!important}
+        /* LEAFLET POPUP CARD OVERRIDE */
+        .leaflet-popup-content-wrapper {
+          background: #162230 !important;
+          color: #ffffff !important;
+          border-radius: 14px !important;
+          border: 1px solid #263548 !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+        }
+        .leaflet-popup-content {
+          margin: 12px 14px !important;
+          width: 220px !important;
+          box-sizing: border-box !important;
+        }
+        .leaflet-popup-tip {
+          background: #162230 !important;
+        }
+        .leaflet-container a.leaflet-popup-close-button {
+          color: #ffffff !important;
+          padding: 8px 8px 0 0 !important;
+        }
+
+        /* LEAFLET ZOOM CONTROLS POSITION */
+        .leaflet-control-zoom {
+          border: 1px solid var(--border) !important;
+          border-radius: 10px !important;
+          overflow: hidden !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+          bottom: 170px !important;
+          right: 16px !important;
+          top: auto !important;
+          left: auto !important;
+        }
+        .leaflet-control-zoom a {
+          background: var(--surface) !important;
+          color: var(--text) !important;
+          border-bottom: 1px solid var(--border) !important;
+        }
 
         /* Live dot */
         .live-dot{
@@ -275,22 +332,6 @@
         <div id="logo">
             <h1>🎓 Parul Campus Navigator</h1>
             <p>Parul University • Vadodara</p>
-        </div>
-
-        <!-- NAVIGATION BANNER — shown during active navigation -->
-        <div id="nav-banner">
-            <div style="display:flex;align-items:flex-start;gap:8px">
-                <span id="nav-next-turn">⬆</span>
-                <div>
-                    <div id="nav-instruction">Head to your destination</div>
-                    <div id="nav-dist-next"></div>
-                </div>
-            </div>
-            <div id="nav-bottom">
-                <span id="nav-dist-total">–</span>
-                <span id="nav-eta">– min</span>
-                <button id="nav-stop-btn" onclick="clearRoute()">✕ Stop</button>
-            </div>
         </div>
 
         <!-- ROUTE INPUTS — hidden during navigation on mobile -->
@@ -340,6 +381,22 @@
     <!-- ── MAP ── -->
     <div id="map-wrap">
         <div id="map"></div>
+
+        <!-- FLOATING NAVIGATION TOP BANNER -->
+        <div id="nav-banner">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+                <span id="nav-next-turn">⬆</span>
+                <div>
+                    <div id="nav-instruction">Head to your destination</div>
+                    <div id="nav-dist-next"></div>
+                </div>
+            </div>
+            <div id="nav-bottom">
+                <span id="nav-dist-total">–</span>
+                <span id="nav-eta">– min</span>
+                <button id="nav-stop-btn" onclick="clearRoute()">✕ Stop</button>
+            </div>
+        </div>
 
         <div id="map-controls">
             <button id="back-btn" onclick="clearRoute()">← Search</button>
@@ -483,8 +540,17 @@
       Gate:"#ff9800",Facility:"#b0bec5"
     };
 
-    // ── MAP INIT ──────────────────────────────────────────────────────────────────
-    const map = L.map('map',{center:[22.2905,73.3640],zoom:16,zoomControl:false});
+    // ── MAP INIT (Constrained to Parul Campus) ──────────────────────────────────
+    const campusBounds = L.latLngBounds([22.2800, 73.3550], [22.2980, 73.3720]);
+    const map = L.map('map',{
+      center:[22.2905,73.3640],
+      zoom:17,
+      minZoom:15,
+      maxZoom:19,
+      maxBounds:campusBounds,
+      maxBoundsViscosity:1.0,
+      zoomControl:false
+    });
     L.control.zoom({position:'bottomright'}).addTo(map);
 
     // ── MODE HELPERS ──────────────────────────────────────────────────────────────
@@ -527,15 +593,36 @@
       const filtered=navInstructions.filter(i=>!['WaypointReached','DestinationReached'].includes(i.type));
       document.getElementById('sheet-dist').textContent=dist;
       document.getElementById('sheet-time').textContent=mins;
-      document.getElementById('sheet-turns').textContent=filtered.length;
-      list.innerHTML=navInstructions.map((ins,i)=>`
-        <div class="turn${i===navStepIndex?' active-turn':''}">
-          <div class="turn-ic">${turnIcon(ins.type)}</div>
-          <div style="flex:1">
-            <div class="turn-txt">${ins.text}</div>
-            ${ins.distance>0?`<div class="turn-d">${fmt(ins.distance)}</div>`:''}
+      document.getElementById('sheet-turns').textContent=filtered.length || Math.max(1, navInstructions.length);
+
+      if(navInstructions && navInstructions.length > 0){
+        list.innerHTML=navInstructions.map((ins,i)=>`
+          <div class="turn${i===navStepIndex?' active-turn':''}">
+            <div class="turn-ic">${turnIcon(ins.type)}</div>
+            <div style="flex:1">
+              <div class="turn-txt">${ins.text}</div>
+              ${ins.distance>0?`<div class="turn-d">${fmt(ins.distance)}</div>`:''}
+            </div>
+          </div>`).join('');
+      } else {
+        const fromLoc=fromId?LOCS.find(l=>l.id===fromId):null;
+        const toLoc=toId?LOCS.find(l=>l.id===toId):null;
+        list.innerHTML=`
+          <div class="turn active-turn">
+            <div class="turn-ic">🟢</div>
+            <div style="flex:1">
+              <div class="turn-txt">Start at ${fromLoc?fromLoc.name:'My Location'}</div>
+              <div class="turn-d">Head along shortest campus pathway</div>
+            </div>
           </div>
-        </div>`).join('');
+          <div class="turn">
+            <div class="turn-ic">🏁</div>
+            <div style="flex:1">
+              <div class="turn-txt">Arrive at ${toLoc?toLoc.name:destName||'Destination'}</div>
+              <div class="turn-d">${dist} meters (${mins} min walk)</div>
+            </div>
+          </div>`;
+      }
     }
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -548,18 +635,20 @@
       const c=TC[loc.type]||'#888';
       const icon=L.divIcon({
         className:'',
-        html:`<div style="width:11px;height:11px;border-radius:50%;background:${c};border:2px solid rgba(0,0,0,.5);box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`,
-        iconSize:[11,11],iconAnchor:[5,5]
+        html:`<div style="width:12px;height:12px;border-radius:50%;background:${c};border:2px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer"></div>`,
+        iconSize:[12,12],iconAnchor:[6,6]
       });
       mkrs[loc.id]=L.marker([loc.lat,loc.lng],{icon}).addTo(map)
-        .bindPopup(`<div style="font-family:Inter,sans-serif;min-width:240px;word-wrap:break-word">
-          <div style="font-weight:700;font-size:13px;margin-bottom:3px">${loc.name}</div>
-          <div style="font-size:11px;color:#888;margin-bottom:10px">${loc.type}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button onclick="setPoint('from',${loc.id})" style="flex:1;min-width:65px;padding:6px;background:#00c896;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;color:#061a12">▶ Start</button>
-            <button onclick="setPoint('to',${loc.id})" style="flex:1;min-width:65px;padding:6px;background:#ff4d6a;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;color:#fff">End</button>
-          </div>
-        </div>`,{maxWidth:300,className:''});
+        .bindPopup(`<div style="font-family:Inter,sans-serif;padding:4px 6px;text-align:center">
+          <div style="font-weight:700;font-size:14px;color:#ffffff;line-height:1.3">${loc.name}</div>
+          <div style="font-size:11px;color:#00e676;font-weight:600;margin-top:4px">📍 ${loc.type}</div>
+        </div>`,{maxWidth:220,className:''});
+
+      mkrs[loc.id].on('click', ()=>{
+        toId = loc.id;
+        document.getElementById('to-inp').value = loc.name;
+        map.setView([loc.lat, loc.lng], 17);
+      });
     });
 
     // ── LIVE LOCATION ─────────────────────────────────────────────────────────────
@@ -717,9 +806,18 @@
     }
 
     function getFromLatLng(){
-      if(usingLiveStart&&liveLat!==null) return L.latLng(liveLat,liveLng);
+      if(usingLiveStart){
+        if(liveLat!==null && liveLng!==null){
+          return L.latLng(liveLat,liveLng);
+        } else {
+          // Fallback to campus center (PU Circle) while live GPS fixes
+          return L.latLng(22.288600,73.364554);
+        }
+      }
       if(fromId){const l=LOCS.find(x=>x.id===fromId);return L.latLng(l.lat,l.lng);}
-      return null;
+      // Fallback default: Administrative Block (id: 5)
+      const def=LOCS.find(x=>x.id===5);
+      return L.latLng(def.lat,def.lng);
     }
     function getToLatLng(){
       if(toId){const l=LOCS.find(x=>x.id===toId);return L.latLng(l.lat,l.lng);}
@@ -728,27 +826,23 @@
 
     async function findRoute(){
       const from=getFromLatLng(),to=getToLatLng();
-      if(!from){alert('Please select a starting point or tap "Use my live location".');return;}
       if(!to){alert('Please select a destination.');return;}
-      if(usingLiveStart&&!liveOn){toast('Getting your location…',0);startLocate(false);setTimeout(findRoute,3000);return;}
 
-      // If both points are named campus locations, use backend A* for stats
+      // If both points are named campus locations, use backend A* for shortest path
       if(fromId && toId){
         const fromLoc=LOCS.find(l=>l.id===fromId);
         const toLoc=LOCS.find(l=>l.id===toId);
         try {
-          toast('Getting A* route from server…',0);
+          toast('Calculating A* shortest route…',0);
           const res=await fetch(`${BACKEND}/route?start=${encodeURIComponent(fromLoc.name)}&end=${encodeURIComponent(toLoc.name)}`);
           const data=await res.json();
           if(data.shortestPath && data.route){
-            // Build waypoints from backend A* path for accurate campus routing
             const waypoints=data.route.map(loc=>L.latLng(loc.latitude,loc.longitude));
-            // Show backend stats
             document.getElementById('sv-dist').textContent=data.totalDistance.replace(' meters','');
             document.getElementById('sv-time').textContent=data.estimatedWalkingTime.replace(' minutes','');
             document.getElementById('sv-turns').textContent=data.totalSteps-1;
             document.getElementById('result-panel').classList.add('show');
-            // Show path steps in sidebar
+
             const tl=document.getElementById('turns-list');
             tl.innerHTML=data.shortestPath.map((name,i)=>`
               <div class="turn">
@@ -759,21 +853,16 @@
             document.getElementById('list-wrap').style.display='none';
             document.getElementById('clear-btn').classList.add('show');
             enterMapMode();
-            renderRouteSheet(parseInt(data.totalDistance)||0, parseInt(data.estimatedWalkingTime)||0);
-            // Store dest info for arrival detection
-            destLat=toLoc.lat;destLng=toLoc.lng;
-            destName=toLoc.name;
-            // Draw road geometry via OSRM using backend waypoints
+            destLat=toLoc.lat;destLng=toLoc.lng;destName=toLoc.name;
             doRouteWithWaypoints(waypoints);
             return;
           }
         } catch(e){
-          console.warn('Backend unavailable, falling back to OSRM:',e);
-          toast('Server unavailable — using fallback routing',3000);
+          console.warn('Backend offline, using local pathfinding:',e);
+          toast('Server offline — calculating shortest path',3000);
         }
       }
 
-      // Fallback: direct OSRM from point A to B
       doRoute(from,to);
     }
 
@@ -798,7 +887,7 @@
         createMarker:()=>null,
         addWaypoints:false,
         draggableWaypoints:false,
-        fitSelectedRoutes:true,
+        fitSelectedRoutes:false,
         show:false
       }).addTo(map);
 
@@ -808,11 +897,12 @@
         navInstructions=r.instructions||[];
         navStepIndex=0;
         document.getElementById('toast').classList.remove('show');
+        const dist=parseInt(document.getElementById('sv-dist').textContent)||Math.round(r.summary.totalDistance);
+        const mins=parseInt(document.getElementById('sv-time').textContent)||Math.ceil(r.summary.totalTime/60);
+        renderRouteSheet(dist,mins);
+        if(toId){const l=LOCS.find(x=>x.id===toId);if(l) map.setView([l.lat,l.lng],17);}
         if(usingLiveStart&&liveOn){
-          enterNavMode(
-            parseInt(document.getElementById('sv-dist').textContent)||Math.round(r.summary.totalDistance),
-            parseInt(document.getElementById('sv-time').textContent)||Math.ceil(r.summary.totalTime/60)
-          );
+          enterNavMode(dist,mins);
         }
       });
 
@@ -844,7 +934,7 @@
         createMarker:()=>null,
         addWaypoints:false,
         draggableWaypoints:false,
-        fitSelectedRoutes:true,
+        fitSelectedRoutes:false,
         show:false
       }).addTo(map);
 
@@ -917,11 +1007,11 @@
       followMode=true;
       document.getElementById('sidebar').classList.add('nav-mode');
       document.getElementById('nav-banner').classList.add('show');
+      document.getElementById('map-controls').style.display='none';
       document.getElementById('route-panel').style.display='none';
       updateNavBanner(dist,mins);
       enterMapMode();
       toggleRouteSheet(false);
-      // Pan and zoom to user position
       if(liveLat&&liveLng){
         map.setView([liveLat,liveLng],18,{animate:true,duration:0.8});
       }
@@ -960,11 +1050,9 @@
       // 3. Advance step index when user is close to next waypoint
       if(navStepIndex<navInstructions.length-1){
         const step=navInstructions[navStepIndex];
-        // highlight next step in list
         document.querySelectorAll('.turn').forEach((el,i)=>{
           el.classList.toggle('active-turn',i===navStepIndex);
         });
-        // auto-scroll turn list
         const activeEl=document.getElementById('turn-'+navStepIndex);
         if(activeEl) activeEl.scrollIntoView({block:'nearest',behavior:'smooth'});
       }
@@ -973,15 +1061,12 @@
       if(routeCtrl){
         const routeLL=routeCtrl.getWaypoints();
         if(routeLL.length>=2){
-          // Simple check: distance to destination still going down?
-          // If user strays more than OFF_ROUTE_DIST from any route point, reroute
           checkOffRoute(userLL);
         }
       }
     }
 
     function checkOffRoute(userLL){
-      // Get the route's polyline points for proximity check
       if(!routeCtrl||!routeCtrl._line) return;
       const latlngs=routeCtrl._line.getLatLngs();
       if(!latlngs||latlngs.length===0) return;
@@ -995,7 +1080,6 @@
       const badge=document.getElementById('off-route-badge');
       if(minDist>OFF_ROUTE_DIST){
         badge.classList.add('show');
-        // Debounce reroute — wait 3s before recalculating
         if(!rerouteTimeout){
           rerouteTimeout=setTimeout(()=>{
             rerouteTimeout=null;
@@ -1015,7 +1099,8 @@
       navigating=false;followMode=false;
       document.getElementById('arrival-dest-name').textContent='You reached '+destName;
       document.getElementById('arrival-overlay').classList.add('show');
-      // Stop the watch panning
+      document.getElementById('nav-banner').classList.remove('show');
+      document.getElementById('map-controls').style.display='flex';
       if(rerouteTimeout){clearTimeout(rerouteTimeout);rerouteTimeout=null;}
     }
 
@@ -1024,6 +1109,8 @@
       fromId=null;toId=null;
       navigating=false;followMode=false;
       navInstructions=[];navStepIndex=0;
+      document.getElementById('nav-banner').classList.remove('show');
+      document.getElementById('map-controls').style.display='flex';
       destLat=null;destLng=null;
       if(rerouteTimeout){clearTimeout(rerouteTimeout);rerouteTimeout=null;}
 
@@ -1106,6 +1193,20 @@
     }
 
     renderChips();renderList();
+
+    // Auto-focus location if passed via URL parameter
+    (function checkUrlTarget(){
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('targetId');
+      const query = params.get('query');
+      if (targetId && mkrs[targetId]) {
+        ddPick('to', parseInt(targetId));
+        enterMapMode();
+      } else if (query) {
+        document.getElementById('srch').value = query;
+        renderList();
+      }
+    })();
 </script>
 </body>
 </html>
