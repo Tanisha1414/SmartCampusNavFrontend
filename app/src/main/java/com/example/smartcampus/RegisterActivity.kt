@@ -323,6 +323,10 @@ fun RegisterScreen(
                                 errorMessage = "All fields are required"
                                 return@Button
                             }
+                            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
+                                errorMessage = "Please enter a valid email address (e.g. user@gmail.com)."
+                                return@Button
+                            }
                             if (password != confirmPassword) {
                                 errorMessage = "Passwords do not match"
                                 return@Button

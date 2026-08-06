@@ -6,10 +6,10 @@
 
     <!-- Splash Screen theme -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <!-- Match the white background of your image -->
-        <item name="windowSplashScreenBackground">#FFFFFF</item>
-        <!-- Show newly generated SmartCampus app icon on the OS splash screen -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_app_logo</item>
+        <!-- Dark gradient matching app background -->
+        <item name="windowSplashScreenBackground">#0F2027</item>
+        <!-- Inset padded logo icon to prevent circle clipping on all screen sizes -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <!-- The theme to use after the splash screen is gone -->
         <item name="postSplashScreenTheme">@style/Theme.SmartCampus</item>
     </style>

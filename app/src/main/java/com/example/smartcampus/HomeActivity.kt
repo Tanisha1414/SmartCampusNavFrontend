@@ -34,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import com.example.smartcampus.data.AuthRepository
 import com.example.smartcampus.ui.theme.SmartCampusTheme
 
@@ -171,19 +174,13 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_app_logo),
+                        contentDescription = "Smart Campus Logo",
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFF00E676).copy(alpha = 0.2f), shape = RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Logo",
-                            tint = Color(0xFF00E676),
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                            .size(38.dp)
+                            .clip(CircleShape)
+                    )
 
                     Spacer(modifier = Modifier.width(10.dp))
 
