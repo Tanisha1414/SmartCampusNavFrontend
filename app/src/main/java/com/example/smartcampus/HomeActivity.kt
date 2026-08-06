@@ -55,8 +55,8 @@ class HomeActivity : ComponentActivity() {
                     HomeScreen(
                         userName = authRepository.getCurrentUserName(),
                         onNavigateToSearch = { query ->
-                            val intent = Intent(this, SearchActivity::class.java)
-                            intent.putExtra("SEARCH_QUERY", query)
+                            val intent = Intent(this, MapActivity::class.java)
+                            if (query.isNotBlank()) intent.putExtra("SEARCH_QUERY", query)
                             startActivity(intent)
                         },
                         onNavigateToMapWithTarget = { locationId, locationName ->
@@ -130,7 +130,7 @@ fun HomeScreen(
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = { onNavigateToSearch("") },
+                    onClick = { onNavigateToMap() },
                     icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White.copy(alpha = 0.7f)) },
                     label = { Text("Search", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp) }
                 )
