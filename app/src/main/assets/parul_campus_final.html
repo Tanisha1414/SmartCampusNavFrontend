@@ -330,8 +330,13 @@
     <!-- ── SIDEBAR ── -->
     <div id="sidebar">
         <div id="logo">
-            <h1>🎓 Parul Campus Navigator</h1>
-            <p>Parul University • Vadodara</p>
+            <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="font-size:16px;line-height:1;margin-top:1px">🎓</span>
+                <div>
+                    <h1 style="margin:0;line-height:1.2">Parul Campus Navigator</h1>
+                    <p style="margin:2px 0 0 0;line-height:1.2">Parul University • Vadodara</p>
+                </div>
+            </div>
         </div>
 
         <!-- ROUTE INPUTS — hidden during navigation on mobile -->
@@ -912,10 +917,21 @@
       });
     }
 
+    let routeStartMarker=null, routeDestMarker=null;
+
+    function clearRouteMarkers(){
+      if(routeStartMarker){map.removeLayer(routeStartMarker);routeStartMarker=null;}
+      if(routeDestMarker){map.removeLayer(routeDestMarker);routeDestMarker=null;}
+    }
+
     function doRoute(from,to){
       if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+      map.closePopup(); // Close all popups for clean route display
+      clearRouteMarkers();
       toast('Calculating route…',0);
       document.getElementById('find-btn').disabled=true;
+
+      const toLocName = toId ? (LOCS.find(l=>l.id===toId)?.name || 'Destination') : 'Destination';
 
       routeCtrl=L.Routing.control({
         waypoints:[from,to],
@@ -946,10 +962,24 @@
         navInstructions=r.instructions||[];
         navStepIndex=0;
 
+        // Connect green path polyline directly to destination coordinate to touch red pin tip
+        if(r._line){
+          try {
+            const pts=r._line.getLatLngs();
+            pts.push(L.latLng(to.lat, to.lng));
+            r._line.setLatLngs(pts);
+          } catch(err){}
+        }
+
         // Store destination
-        const toLoc=getToLatLng();
-        destLat=toLoc.lat;destLng=toLoc.lng;
-        destName=toId?LOCS.find(l=>l.id===toId)?.name||'Destination':'Destination';
+        destLat=to.lat;destLng=to.lng;
+        destName=toLocName;
+
+        // Fit map bounds to show route cleanly
+        try {
+          const rBounds = L.latLngBounds([from.lat, from.lng], [to.lat, to.lng]);
+          map.fitBounds(rBounds, { padding: [50, 50], maxZoom: 18 });
+        } catch(e){}
 
         // Stats
         document.getElementById('sv-dist').textContent=dist;
@@ -965,7 +995,6 @@
         document.getElementById('toast').classList.remove('show');
         enterMapMode();
         renderRouteSheet(dist,mins);
-        // Auto-open the directions sheet to show turns
         toggleRouteSheet(true);
 
         // Enter navigation mode if using live location
