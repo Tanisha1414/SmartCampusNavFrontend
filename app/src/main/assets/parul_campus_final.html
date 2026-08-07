@@ -772,6 +772,49 @@
       if(usingLiveStart) cancelLiveStart();
     }
 
+    window.loadCustomLocations = function(jsonStr) {
+      if(!jsonStr || jsonStr === '[]') return;
+      try {
+        const customLocs = JSON.parse(jsonStr);
+        customLocs.forEach(loc => {
+          // Verify it doesn't already exist in LOCS
+          if(!LOCS.some(l => l.name === loc.name)) {
+            // Assign a unique id to the custom location
+            const newId = 1000 + LOCS.length;
+            const newLoc = {
+              id: newId,
+              name: loc.name,
+              lat: parseFloat(loc.lat),
+              lng: parseFloat(loc.lng),
+              type: loc.type || 'Other'
+            };
+            LOCS.push(newLoc);
+            
+            // Add marker for this custom location
+            const c=TC[newLoc.type]||'#888';
+            const icon=L.divIcon({
+              className:'',
+              html:`<div style="width:12px;height:12px;border-radius:50%;background:${c};border:2px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer"></div>`,
+              iconSize:[12,12],iconAnchor:[6,6]
+            });
+            mkrs[newLoc.id]=L.marker([newLoc.lat,newLoc.lng],{icon}).addTo(map)
+              .bindPopup(newLoc.name, {maxWidth:180, className:'', closeButton:false, autoClose:true});
+
+            mkrs[newLoc.id].on('click', ()=>{
+              toId = newLoc.id;
+              document.getElementById('to-inp').value = newLoc.name;
+              map.setView([newLoc.lat, newLoc.lng], 17);
+            });
+          }
+        });
+        
+        // Re-render location lists
+        if(typeof renderList === 'function') renderList();
+      } catch(e) {
+        console.error("Error loading custom locations:", e);
+      }
+    };
+
     window.gotNativeLocation = function(lat, lng, bearing, accuracy) {
       liveLat = lat;
       liveLng = lng;

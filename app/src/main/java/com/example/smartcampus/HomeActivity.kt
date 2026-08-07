@@ -1,5 +1,6 @@
 package com.example.smartcampus
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -82,6 +83,24 @@ class HomeActivity : ComponentActivity() {
     }
 }
 
+private fun parseCustomLocations(json: String): List<Location> {
+    val result = mutableListOf<Location>()
+    if (json == "[]" || json.isBlank()) return result
+    val items = json.removeSurrounding("[", "]").split("},")
+    for (item in items) {
+        try {
+            val clean = item.trim().removeSurrounding("{", "}")
+            val id = Regex("\"id\":(\\d+)").find(clean)?.groupValues?.get(1)?.toInt() ?: (1000 + result.size)
+            val name = Regex("\"name\":\"([^\"]*)\"").find(clean)?.groupValues?.get(1) ?: continue
+            val lat = Regex("\"lat\":([\\d.]+)").find(clean)?.groupValues?.get(1)?.toDouble() ?: 0.0
+            val lng = Regex("\"lng\":([\\d.]+)").find(clean)?.groupValues?.get(1)?.toDouble() ?: 0.0
+            val type = Regex("\"type\":\"([^\"]*)\"").find(clean)?.groupValues?.get(1) ?: ""
+            result.add(Location(id, name, lat, lng, type))
+        } catch (e: Exception) {}
+    }
+    return result
+}
+
 data class CategoryItem(val name: String, val emoji: String, val query: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,8 +114,36 @@ fun HomeScreen(
     onNavigateToAccount: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategoryQuery by remember { mutableStateOf<String?>(null) }
+    var selectedCategoryName by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
+
+    val filteredLocations = remember(selectedCategoryQuery) {
+        val query = selectedCategoryQuery ?: ""
+        if (query.isBlank()) {
+            emptyList<Location>()
+        } else {
+            val builtin = SampleData.locations
+            val custom = try {
+                val prefs = context.getSharedPreferences("smart_campus_custom_locs", Context.MODE_PRIVATE)
+                val customJson = prefs.getString("custom_locations", "[]") ?: "[]"
+                parseCustomLocations(customJson)
+            } catch (e: Exception) {
+                emptyList<Location>()
+            }
+            val all = builtin + custom
+            when (query) {
+                "Canteens" -> all.filter { it.type.equals("Food", ignoreCase = true) || it.type.equals("Mess", ignoreCase = true) }
+                "Departments" -> all.filter { it.type.equals("Academic", ignoreCase = true) }
+                "Admin Block" -> all.filter { it.type.equals("Administrative", ignoreCase = true) }
+                "Hostels" -> all.filter { it.type.equals("Hostel", ignoreCase = true) }
+                "Restrooms" -> all.filter { it.type.equals("Facility", ignoreCase = true) && (it.name.contains("washroom", ignoreCase = true) || it.name.contains("toilet", ignoreCase = true) || it.name.contains("restroom", ignoreCase = true)) }
+                "Parking" -> all.filter { it.type.equals("Parking", ignoreCase = true) }
+                else -> all.filter { it.type.contains(query, ignoreCase = true) || it.name.contains(query, ignoreCase = true) }
+            }
+        }
+    }
 
     val allLocations = remember { SampleData.locations }
     val autocompleteResults = remember(searchQuery) {
@@ -363,7 +410,10 @@ fun HomeScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable { onNavigateToSearch(item.query) }
+                                    .clickable {
+                                        selectedCategoryQuery = item.query
+                                        selectedCategoryName = item.name
+                                    }
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -410,7 +460,10 @@ fun HomeScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(100.dp)
-                        .clickable { onNavigateToSearch("Academic") },
+                        .clickable {
+                            selectedCategoryQuery = "Academic"
+                            selectedCategoryName = "Academic Buildings"
+                        },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2A78))
                 ) {
@@ -435,7 +488,10 @@ fun HomeScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(100.dp)
-                        .clickable { onNavigateToSearch("Food") },
+                        .clickable {
+                            selectedCategoryQuery = "Food"
+                            selectedCategoryName = "Dining"
+                        },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
                 ) {
@@ -467,7 +523,10 @@ fun HomeScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(100.dp)
-                        .clickable { onNavigateToSearch("Events") },
+                        .clickable {
+                            selectedCategoryQuery = "Recreation"
+                            selectedCategoryName = "Events & Auditoriums"
+                        },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
                 ) {
@@ -509,6 +568,106 @@ fun HomeScreen(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+            }
+
+            if (!selectedCategoryName.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$selectedCategoryName",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Clear",
+                        color = Color(0xFF00E676),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            selectedCategoryQuery = null
+                            selectedCategoryName = null
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                if (filteredLocations.isEmpty()) {
+                    Text(
+                        text = "No locations found in this category.",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 14.sp
+                    )
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2D3D))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            filteredLocations.forEachIndexed { index, location ->
+                                val iconColor = remember(location.id) {
+                                    val hues = listOf(
+                                        Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFF9575CD),
+                                        Color(0xFF7986CB), Color(0xFF64B5F6), Color(0xFF4FC3F7), Color(0xFF4DD0E1),
+                                        Color(0xFF4DB6AC), Color(0xFF81C784), Color(0xFFAED581), Color(0xFFFFD54F),
+                                        Color(0xFFFFB74D), Color(0xFFFF8A65)
+                                    )
+                                    hues[kotlin.math.abs(location.id) % hues.size]
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onNavigateToMapWithTarget(location.id, location.name)
+                                        }
+                                        .padding(vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(iconColor.copy(alpha = 0.15f), shape = CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Place,
+                                            contentDescription = "Location",
+                                            tint = iconColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = location.name,
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = location.type,
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                if (index < filteredLocations.size - 1) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.08f),
+                                        thickness = 1.dp
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

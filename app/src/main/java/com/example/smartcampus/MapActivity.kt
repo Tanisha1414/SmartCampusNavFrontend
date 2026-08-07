@@ -3,6 +3,7 @@ package com.example.smartcampus
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -14,6 +15,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -35,8 +37,28 @@ class MapActivity : ComponentActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        // Permissions granted
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fineGranted || coarseGranted) {
+            checkGpsAndRequestTurnOn()
+        }
+    }
+
+    private fun checkGpsAndRequestTurnOn() {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        val isGpsEnabled = locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
+        val isNetworkEnabled = locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ?: false
+        
+        if (!isGpsEnabled && !isNetworkEnabled) {
+            Toast.makeText(this, "Please enable GPS/Location Services", Toast.LENGTH_LONG).show()
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Fallback
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,8 +69,10 @@ class MapActivity : ComponentActivity() {
         val searchQuery = intent.getStringExtra("SEARCH_QUERY") ?: ""
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
+            == PackageManager.PERMISSION_GRANTED
         ) {
+            checkGpsAndRequestTurnOn()
+        } else {
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -102,7 +126,18 @@ fun MapScreen(locationId: Int, searchQuery: String) {
                     }
                 }
 
-                webViewClient = WebViewClient()
+                webViewClient = object : android.webkit.WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        val prefs = ctx.getSharedPreferences("smart_campus_custom_locs", Context.MODE_PRIVATE)
+                        val customLocs = prefs.getString("custom_locations", "[]") ?: "[]"
+                        val escapedJson = customLocs.replace("'", "\\'")
+                        evaluateJavascript(
+                            "if(typeof loadCustomLocations==='function') loadCustomLocations('$escapedJson');",
+                            null
+                        )
+                    }
+                }
 
                 val url = when {
                     locationId > 0 -> "file:///android_asset/parul_campus_final.html?targetId=$locationId"
