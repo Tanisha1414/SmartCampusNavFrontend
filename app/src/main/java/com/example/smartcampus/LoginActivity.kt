@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -395,19 +397,45 @@ fun LoginScreen(
 
 @Composable
 fun AnimatedSplashScreen() {
+    val showLogo = remember { mutableStateOf(false) }
+    val showAnimation = remember { mutableStateOf(true) }
+
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
-    val rotation = remember { Animatable(0f) }
-    val glowScale = remember { Animatable(1f) }
-    val glowAlpha = remember { Animatable(0.6f) }
+    val textAlpha = remember { Animatable(0f) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "loading")
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "angle"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
 
     LaunchedEffect(Unit) {
-        // Logo Entrance Animations
+        // Show modern loading animation first for 2.5 seconds
+        delay(2500)
+        showAnimation.value = false
+        showLogo.value = true
+
+        // Display logo for remaining 2 seconds
         launch {
             scale.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 1500,
+                    durationMillis = 800,
                     easing = FastOutSlowInEasing
                 )
             )
@@ -415,35 +443,17 @@ fun AnimatedSplashScreen() {
         launch {
             alpha.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 1200)
+                animationSpec = tween(durationMillis = 600)
             )
         }
+        
+        // Delay text fade-in slightly
+        delay(300)
         launch {
-            rotation.animateTo(
-                targetValue = 360f,
-                animationSpec = tween(
-                    durationMillis = 2000,
-                    easing = FastOutSlowInEasing
-                )
+            textAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 600)
             )
-        }
-        // Infinite pulse glow animation
-        launch {
-            while (true) {
-                glowScale.snapTo(1f)
-                glowAlpha.snapTo(0.6f)
-                launch {
-                    glowScale.animateTo(
-                        targetValue = 1.8f,
-                        animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing)
-                    )
-                }
-                glowAlpha.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing)
-                )
-                delay(100)
-            }
         }
     }
 
@@ -466,68 +476,96 @@ fun AnimatedSplashScreen() {
         ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(240.dp)
+                modifier = Modifier.size(200.dp)
             ) {
-                // Pulsing Ring Glow
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .graphicsLayer(
-                            scaleX = glowScale.value,
-                            scaleY = glowScale.value,
-                            alpha = glowAlpha.value
-                        )
-                        .background(Color(0xFF00E676).copy(alpha = 0.3f), shape = CircleShape)
-                )
-
-                // White circle card wrapping the Clocktower logo
-                Card(
-                    modifier = Modifier
-                        .size(130.dp)
-                        .graphicsLayer(
-                            scaleX = scale.value,
-                            scaleY = scale.value,
-                            alpha = alpha.value,
-                            rotationZ = rotation.value
-                        ),
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
-                ) {
+                if (showAnimation.value) {
+                    // Modern Circular Loading Animation
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_app_logo),
-                            contentDescription = "App Logo",
-                            modifier = Modifier
-                                .size(95.dp)
-                                .clip(CircleShape)
+                        modifier = Modifier
+                            .size(100.dp)
+                            .graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                            .background(Color(0xFF00E676).copy(alpha = 0.15f), shape = CircleShape)
+                    )
+                    Canvas(modifier = Modifier.size(140.dp)) {
+                        drawArc(
+                            color = Color(0xFF00E676),
+                            startAngle = angle,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
                         )
+                        drawArc(
+                            color = Color(0xFF00E676).copy(alpha = 0.3f),
+                            startAngle = angle + 180f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                    Canvas(modifier = Modifier.size(100.dp)) {
+                        drawArc(
+                            color = Color(0xFF2196F3),
+                            startAngle = -angle,
+                            sweepAngle = 120f,
+                            useCenter = false,
+                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                }
+
+                if (showLogo.value) {
+                    // White circle card wrapping the Clocktower logo
+                    Card(
+                        modifier = Modifier
+                            .size(130.dp)
+                            .graphicsLayer(
+                                scaleX = scale.value,
+                                scaleY = scale.value,
+                                alpha = alpha.value
+                            ),
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_app_logo),
+                                contentDescription = "App Logo",
+                                modifier = Modifier
+                                    .size(95.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Brand Text
+            // Modern splash brand text
             Text(
-                text = "Smart Campus",
+                text = "Smart Campus Navigation",
                 color = Color.White,
-                fontSize = 28.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.graphicsLayer(alpha = alpha.value)
+                modifier = Modifier.graphicsLayer(alpha = textAlpha.value),
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Parul Campus Navigator",
-                color = Color(0xFF00E676),
-                fontSize = 14.sp,
+                text = "Finding your destination has never been easier",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.graphicsLayer(alpha = alpha.value)
+                modifier = Modifier
+                    .graphicsLayer(alpha = textAlpha.value)
+                    .padding(horizontal = 24.dp),
+                textAlign = TextAlign.Center
             )
         }
     }

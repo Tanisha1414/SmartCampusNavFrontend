@@ -662,6 +662,7 @@
     let liveLat=null,liveLng=null,liveHeading=null;
     let usingLiveStart=false;
     let followMode=false; // pan map to user while navigating
+    let lastSplicedLL=null;
 
     function toast(msg,dur=3000){
       const t=document.getElementById('toast');
@@ -770,6 +771,28 @@
       document.getElementById('locate-btn').classList.remove('on');
       if(usingLiveStart) cancelLiveStart();
     }
+
+    window.gotNativeLocation = function(lat, lng, bearing, accuracy) {
+      liveLat = lat;
+      liveLng = lng;
+      liveHeading = bearing;
+      liveOn = true;
+      
+      const acc = Math.round(accuracy || 10);
+      updateLiveDot(lat, lng, acc);
+      
+      if (usingLiveStart && document.getElementById('from-inp').value !== '📍 My Location') {
+        document.getElementById('from-inp').value = '📍 My Location';
+      }
+      
+      if (followMode && navigating) {
+        map.setView([lat, lng], 18, { animate: true, duration: 0.5 });
+      }
+      
+      if (navigating) {
+        checkNavProgress();
+      }
+    };
 
     function useMyLocation(){
       const btn=document.getElementById('use-loc-btn');
@@ -941,6 +964,28 @@
       if(routeDestMarker){map.removeLayer(routeDestMarker);routeDestMarker=null;}
     }
 
+    function updateTimeLabels(dist,mins){
+      const isDrive = dist >= 2000;
+      const label = isDrive ? 'min drive' : 'min walk';
+      const displayMins = isDrive ? mins : Math.max(1, Math.ceil(dist / 80));
+      
+      document.getElementById('sv-dist').textContent=dist;
+      document.getElementById('sv-time').textContent=displayMins;
+      const sl = document.querySelector('#sv-time + .sl') || document.querySelector('.sl');
+      if (sl) sl.textContent = label;
+      
+      document.getElementById('sheet-dist').textContent=dist;
+      document.getElementById('sheet-time').textContent=displayMins;
+      const sheetLab = document.querySelector('#sheet-time + .sheet-lab') || document.querySelector('.sheet-lab');
+      if (sheetLab) sheetLab.textContent = label;
+      
+      const navDistTotal = document.getElementById('nav-dist-total');
+      if (navDistTotal) navDistTotal.textContent = fmt(dist) + ' remaining';
+      
+      const navEta = document.getElementById('nav-eta');
+      if (navEta) navEta.textContent = displayMins + ' min (' + (isDrive ? 'drive' : 'walk') + ')';
+    }
+
     function doRoute(from,to){
       if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
       map.closePopup(); // Close all popups for clean route display
@@ -1010,8 +1055,7 @@
         } catch(e){}
 
         // Stats
-        document.getElementById('sv-dist').textContent=dist;
-        document.getElementById('sv-time').textContent=mins;
+        updateTimeLabels(dist, mins);
         document.getElementById('sv-turns').textContent=navInstructions.filter(i=>!['WaypointReached','DestinationReached','Head'].includes(i.type)).length;
         document.getElementById('result-panel').classList.add('show');
 
@@ -1082,8 +1126,9 @@
         document.getElementById('nav-instruction').textContent=step.text;
         document.getElementById('nav-dist-next').textContent=step.distance>0?'In '+fmt(step.distance):'';
       }
+      const isDrive = distRemaining >= 2000;
       document.getElementById('nav-dist-total').textContent=fmt(distRemaining)+' remaining';
-      document.getElementById('nav-eta').textContent=minsRemaining+' min';
+      document.getElementById('nav-eta').textContent=minsRemaining+' min (' + (isDrive ? 'drive' : 'walk') + ')';
     }
 
     // Called every time GPS updates during navigation
@@ -1101,8 +1146,10 @@
       }
 
       // 2. Update remaining distance display
-      const mins=Math.ceil(distToDest/80/60*1000); // ~80m/min walking
-      updateNavBanner(Math.round(distToDest),Math.max(1,Math.ceil(distToDest/80)));
+      const isDrive = distToDest >= 2000;
+      const speed = isDrive ? 500 : 80; // 500m/min driving, 80m/min walking
+      const minsRemaining = Math.max(1, Math.ceil(distToDest / speed));
+      updateNavBanner(Math.round(distToDest), minsRemaining);
 
       // 3. Advance step index when user is close to next waypoint
       if(navStepIndex<navInstructions.length-1){
@@ -1119,6 +1166,16 @@
         const routeLL=routeCtrl.getWaypoints();
         if(routeLL.length>=2){
           checkOffRoute(userLL);
+        }
+      }
+
+      // 5. Update route starting waypoint to match current live location (covered path disappears)
+      if (routeCtrl) {
+        if (!lastSplicedLL || userLL.distanceTo(lastSplicedLL) > 15) {
+          try {
+            routeCtrl.spliceWaypoints(0, 1, userLL);
+            lastSplicedLL = userLL;
+          } catch(e){}
         }
       }
     }
@@ -1170,6 +1227,7 @@
       document.getElementById('sv-dist').textContent='-';
       document.getElementById('sv-time').textContent='-';
       document.getElementById('sv-turns').textContent='-';
+      lastSplicedLL = null;
 
       fromId=null;toId=null;
       navigating=false;followMode=false;
