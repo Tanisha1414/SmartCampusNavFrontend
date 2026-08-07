@@ -24,6 +24,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -116,6 +119,7 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryQuery by remember { mutableStateOf<String?>(null) }
     var selectedCategoryName by remember { mutableStateOf<String?>(null) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
 
@@ -124,7 +128,7 @@ fun HomeScreen(
         if (query.isBlank()) {
             emptyList<Location>()
         } else {
-            val builtin = SampleData.locations
+            val builtin = SampleData.getLocationsByCategory(query)
             val custom = try {
                 val prefs = context.getSharedPreferences("smart_campus_custom_locs", Context.MODE_PRIVATE)
                 val customJson = prefs.getString("custom_locations", "[]") ?: "[]"
@@ -132,16 +136,10 @@ fun HomeScreen(
             } catch (e: Exception) {
                 emptyList<Location>()
             }
-            val all = builtin + custom
-            when (query) {
-                "Canteens" -> all.filter { it.type.equals("Food", ignoreCase = true) || it.type.equals("Mess", ignoreCase = true) }
-                "Departments" -> all.filter { it.type.equals("Academic", ignoreCase = true) }
-                "Admin Block" -> all.filter { it.type.equals("Administrative", ignoreCase = true) }
-                "Hostels" -> all.filter { it.type.equals("Hostel", ignoreCase = true) }
-                "Restrooms" -> all.filter { it.type.equals("Facility", ignoreCase = true) && (it.name.contains("washroom", ignoreCase = true) || it.name.contains("toilet", ignoreCase = true) || it.name.contains("restroom", ignoreCase = true)) }
-                "Parking" -> all.filter { it.type.equals("Parking", ignoreCase = true) }
-                else -> all.filter { it.type.contains(query, ignoreCase = true) || it.name.contains(query, ignoreCase = true) }
+            val filteredCustom = custom.filter {
+                it.type.contains(query, ignoreCase = true) || it.name.contains(query, ignoreCase = true)
             }
+            builtin + filteredCustom
         }
     }
 
@@ -413,6 +411,7 @@ fun HomeScreen(
                                     .clickable {
                                         selectedCategoryQuery = item.query
                                         selectedCategoryName = item.name
+                                        showCategoryDialog = true
                                     }
                             ) {
                                 Box(
@@ -463,6 +462,7 @@ fun HomeScreen(
                         .clickable {
                             selectedCategoryQuery = "Academic"
                             selectedCategoryName = "Academic Buildings"
+                            showCategoryDialog = true
                         },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2A78))
@@ -491,6 +491,7 @@ fun HomeScreen(
                         .clickable {
                             selectedCategoryQuery = "Food"
                             selectedCategoryName = "Dining"
+                            showCategoryDialog = true
                         },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
@@ -526,6 +527,7 @@ fun HomeScreen(
                         .clickable {
                             selectedCategoryQuery = "Recreation"
                             selectedCategoryName = "Events & Auditoriums"
+                            showCategoryDialog = true
                         },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
@@ -572,104 +574,132 @@ fun HomeScreen(
                 }
             }
 
-            if (!selectedCategoryName.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(28.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$selectedCategoryName",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Clear",
-                        color = Color(0xFF00E676),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            selectedCategoryQuery = null
-                            selectedCategoryName = null
+            // --- CATEGORY LOCATIONS DIALOG ---
+            if (showCategoryDialog && !selectedCategoryName.isNullOrBlank()) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showCategoryDialog = false
+                        selectedCategoryQuery = null
+                        selectedCategoryName = null
+                    },
+                    containerColor = Color(0xFF162230),
+                    titleContentColor = Color.White,
+                    textContentColor = Color.White,
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = selectedCategoryName ?: "",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+                            IconButton(onClick = {
+                                showCategoryDialog = false
+                                selectedCategoryQuery = null
+                                selectedCategoryName = null
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Close", tint = Color.White)
+                            }
                         }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                if (filteredLocations.isEmpty()) {
-                    Text(
-                        text = "No locations found in this category.",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 14.sp
-                    )
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2D3D))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            filteredLocations.forEachIndexed { index, location ->
-                                val iconColor = remember(location.id) {
-                                    val hues = listOf(
-                                        Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFF9575CD),
-                                        Color(0xFF7986CB), Color(0xFF64B5F6), Color(0xFF4FC3F7), Color(0xFF4DD0E1),
-                                        Color(0xFF4DB6AC), Color(0xFF81C784), Color(0xFFAED581), Color(0xFFFFD54F),
-                                        Color(0xFFFFB74D), Color(0xFFFF8A65)
-                                    )
-                                    hues[kotlin.math.abs(location.id) % hues.size]
-                                }
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            onNavigateToMapWithTarget(location.id, location.name)
+                    },
+                    text = {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (filteredLocations.isEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "No locations found in this category.",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 14.sp
+                                )
+                            } else {
+                                Box(modifier = Modifier.heightIn(max = 350.dp)) {
+                                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        items(filteredLocations) { location ->
+                                            val iconColor = remember(location.id) {
+                                                val hues = listOf(
+                                                    Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFF9575CD),
+                                                    Color(0xFF7986CB), Color(0xFF64B5F6), Color(0xFF4FC3F7), Color(0xFF4DD0E1),
+                                                    Color(0xFF4DB6AC), Color(0xFF81C784), Color(0xFFAED581), Color(0xFFFFD54F),
+                                                    Color(0xFFFFB74D), Color(0xFFFF8A65)
+                                                )
+                                                hues[kotlin.math.abs(location.id) % hues.size]
+                                            }
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        showCategoryDialog = false
+                                                        onNavigateToMapWithTarget(location.id, location.name)
+                                                    },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(36.dp)
+                                                                .background(iconColor.copy(alpha = 0.15f), shape = CircleShape),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Place,
+                                                                contentDescription = "Place",
+                                                                tint = iconColor,
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(12.dp))
+                                                        Column {
+                                                            Text(
+                                                                text = location.name,
+                                                                color = Color.White,
+                                                                fontSize = 14.sp,
+                                                                fontWeight = FontWeight.Bold
+                                                            )
+                                                            Text(
+                                                                text = location.type,
+                                                                color = Color.White.copy(alpha = 0.6f),
+                                                                fontSize = 11.sp
+                                                            )
+                                                        }
+                                                    }
+                                                    
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(32.dp)
+                                                            .background(Color(0xFF00E676).copy(alpha = 0.2f), shape = CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.LocationOn,
+                                                            contentDescription = "Navigate",
+                                                            tint = Color(0xFF00E676),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
-                                        .padding(vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(iconColor.copy(alpha = 0.15f), shape = CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Place,
-                                            contentDescription = "Location",
-                                            tint = iconColor,
-                                            modifier = Modifier.size(24.dp)
-                                        )
                                     }
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = location.name,
-                                            color = Color.White,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = location.type,
-                                            color = Color.White.copy(alpha = 0.6f),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                                if (index < filteredLocations.size - 1) {
-                                    HorizontalDivider(
-                                        color = Color.White.copy(alpha = 0.08f),
-                                        thickness = 1.dp
-                                    )
                                 }
                             }
                         }
-                    }
-                }
+                    },
+                    confirmButton = {}
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
