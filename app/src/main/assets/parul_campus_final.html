@@ -907,34 +907,45 @@
       if(fromId && toId){
         const fromLoc=LOCS.find(l=>l.id===fromId);
         const toLoc=LOCS.find(l=>l.id===toId);
-        try {
-          toast('Calculating A* shortest route…',0);
-          const res=await fetch(`${BACKEND}/route?start=${encodeURIComponent(fromLoc.name)}&end=${encodeURIComponent(toLoc.name)}`);
-          const data=await res.json();
-          if(data.shortestPath && data.route){
-            const waypoints=data.route.map(loc=>L.latLng(loc.latitude,loc.longitude));
-            document.getElementById('sv-dist').textContent=data.totalDistance.replace(' meters','');
-            document.getElementById('sv-time').textContent=data.estimatedWalkingTime.replace(' minutes','');
-            document.getElementById('sv-turns').textContent=data.totalSteps-1;
-            document.getElementById('result-panel').classList.add('show');
+        if (fromLoc && toLoc) {
+          try {
+            toast('Calculating shortest route…',0);
+            
+            // 1.5s timeout to prevent hanging on slow Railway free-tier backends
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            
+            const res=await fetch(`${BACKEND}/route?start=${encodeURIComponent(fromLoc.name)}&end=${encodeURIComponent(toLoc.name)}`, {
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            const data=await res.json();
+            if(data.shortestPath && data.route){
+              const waypoints=data.route.map(loc=>L.latLng(loc.latitude,loc.longitude));
+              document.getElementById('sv-dist').textContent=data.totalDistance.replace(' meters','');
+              document.getElementById('sv-time').textContent=data.estimatedWalkingTime.replace(' minutes','');
+              document.getElementById('sv-turns').textContent=data.totalSteps-1;
+              document.getElementById('result-panel').classList.add('show');
 
-            const tl=document.getElementById('turns-list');
-            tl.innerHTML=data.shortestPath.map((name,i)=>`
-              <div class="turn">
-                <div class="turn-ic">${i===0?'🟢':i===data.shortestPath.length-1?'🏁':'📍'}</div>
-                <div><div class="turn-txt">${name}</div></div>
-              </div>`).join('');
-            document.getElementById('turns-wrap').classList.add('show');
-            document.getElementById('list-wrap').style.display='none';
-            document.getElementById('clear-btn').classList.add('show');
-            enterMapMode();
-            destLat=toLoc.lat;destLng=toLoc.lng;destName=toLoc.name;
-            doRouteWithWaypoints(waypoints);
-            return;
+              const tl=document.getElementById('turns-list');
+              tl.innerHTML=data.shortestPath.map((name,i)=>`
+                <div class="turn">
+                  <div class="turn-ic">${i===0?'🟢':i===data.shortestPath.length-1?'🏁':'📍'}</div>
+                  <div><div class="turn-txt">${name}</div></div>
+                </div>`).join('');
+              document.getElementById('turns-wrap').classList.add('show');
+              document.getElementById('list-wrap').style.display='none';
+              document.getElementById('clear-btn').classList.add('show');
+              enterMapMode();
+              destLat=toLoc.lat;destLng=toLoc.lng;destName=toLoc.name;
+              doRouteWithWaypoints(waypoints);
+              return;
+            }
+          } catch(e){
+            console.warn('Backend offline/slow, using local pathfinding:',e);
+            toast('Using local pathfinding',2000);
           }
-        } catch(e){
-          console.warn('Backend offline, using local pathfinding:',e);
-          toast('Server offline — calculating shortest path',3000);
         }
       }
 
@@ -988,7 +999,18 @@
         const dist=parseInt(document.getElementById('sv-dist').textContent)||Math.round(r.summary.totalDistance);
         const mins=parseInt(document.getElementById('sv-time').textContent)||Math.ceil(r.summary.totalTime/60);
         renderRouteSheet(dist,mins);
-        if(toId){const l=LOCS.find(x=>x.id===toId);if(l) map.setView([l.lat,l.lng],17);}
+        
+        // Fit bounds to waypoints for A* route display
+        if(waypoints && waypoints.length >= 2){
+          try {
+            const rBounds = L.latLngBounds(waypoints);
+            map.fitBounds(rBounds, { padding: [50, 50], maxZoom: 18 });
+          } catch(e){}
+        } else if(toId){
+          const l=LOCS.find(x=>x.id===toId);
+          if(l) map.setView([l.lat,l.lng],17);
+        }
+        
         if(usingLiveStart&&liveOn){
           enterNavMode(dist,mins);
         }
@@ -1037,8 +1059,8 @@
       document.getElementById('find-btn').disabled=true;
 
       // Temporarily remove maxBounds if either start or end is outside campus bounds
-      const fromLL = L.latLng(from.lat, from.lng);
-      const toLL = L.latLng(to.lat, to.lng);
+      const fromLL = L.latLng(from);
+      const toLL = L.latLng(to);
       if(!campusBounds.contains(fromLL) || !campusBounds.contains(toLL)){
         map.setMaxBounds(null);
         map.setMinZoom(10);
@@ -1093,7 +1115,7 @@
 
         // Fit map bounds to show route cleanly
         try {
-          const rBounds = L.latLngBounds([from.lat, from.lng], [to.lat, to.lng]);
+          const rBounds = L.latLngBounds(from, to);
           map.fitBounds(rBounds, { padding: [50, 50], maxZoom: 18 });
         } catch(e){}
 
