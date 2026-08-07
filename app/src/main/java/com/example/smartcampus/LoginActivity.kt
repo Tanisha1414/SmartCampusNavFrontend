@@ -44,6 +44,9 @@ import com.example.smartcampus.data.AuthRepository
 import com.example.smartcampus.ui.theme.SmartCampusTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
+
 
 class LoginActivity : ComponentActivity() {
 
@@ -53,30 +56,39 @@ class LoginActivity : ComponentActivity() {
 
         val authRepository = AuthRepository(this)
 
-        // AUTO-LOGIN CHECK: If already logged in, jump straight to HomeActivity!
-        if (authRepository.isLoggedIn()) {
-            startActivity(Intent(this, HomeActivity::class.java))
-            finish()
-            return
-        }
-
         enableEdgeToEdge()
         setContent {
             SmartCampusTheme {
+                var showSplash by remember { mutableStateOf(true) }
+
+                LaunchedEffect(Unit) {
+                    delay(4500)
+                    showSplash = false
+                    // Auto-login after splash animation completes
+                    if (authRepository.isLoggedIn()) {
+                        startActivity(Intent(this@LoginActivity, HomeActivity::class.java))
+                        finish()
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF0F2027)
                 ) {
-                    LoginScreen(
-                        authRepository = authRepository,
-                        onNavigateToHome = {
-                            startActivity(Intent(this, HomeActivity::class.java))
-                            finish()
-                        },
-                        onNavigateToRegister = {
-                            startActivity(Intent(this, RegisterActivity::class.java))
-                        }
-                    )
+                    if (showSplash) {
+                        AnimatedSplashScreen()
+                    } else {
+                        LoginScreen(
+                            authRepository = authRepository,
+                            onNavigateToHome = {
+                                startActivity(Intent(this@LoginActivity, HomeActivity::class.java))
+                                finish()
+                            },
+                            onNavigateToRegister = {
+                                startActivity(Intent(this@LoginActivity, RegisterActivity::class.java))
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -380,3 +392,143 @@ fun LoginScreen(
         }
     }
 }
+
+@Composable
+fun AnimatedSplashScreen() {
+    val scale = remember { Animatable(0f) }
+    val alpha = remember { Animatable(0f) }
+    val rotation = remember { Animatable(0f) }
+    val glowScale = remember { Animatable(1f) }
+    val glowAlpha = remember { Animatable(0.6f) }
+
+    LaunchedEffect(Unit) {
+        // Logo Entrance Animations
+        launch {
+            scale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 1500,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        }
+        launch {
+            alpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1200)
+            )
+        }
+        launch {
+            rotation.animateTo(
+                targetValue = 360f,
+                animationSpec = tween(
+                    durationMillis = 2000,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        }
+        // Infinite pulse glow animation
+        launch {
+            while (true) {
+                glowScale.snapTo(1f)
+                glowAlpha.snapTo(0.6f)
+                launch {
+                    glowScale.animateTo(
+                        targetValue = 1.8f,
+                        animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing)
+                    )
+                }
+                glowAlpha.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing)
+                )
+                delay(100)
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF162A36),
+                        Color(0xFF0F2027)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(240.dp)
+            ) {
+                // Pulsing Ring Glow
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .graphicsLayer(
+                            scaleX = glowScale.value,
+                            scaleY = glowScale.value,
+                            alpha = glowAlpha.value
+                        )
+                        .background(Color(0xFF00E676).copy(alpha = 0.3f), shape = CircleShape)
+                )
+
+                // White circle card wrapping the Clocktower logo
+                Card(
+                    modifier = Modifier
+                        .size(130.dp)
+                        .graphicsLayer(
+                            scaleX = scale.value,
+                            scaleY = scale.value,
+                            alpha = alpha.value,
+                            rotationZ = rotation.value
+                        ),
+                    shape = CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_app_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier
+                                .size(95.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Brand Text
+            Text(
+                text = "Smart Campus",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.graphicsLayer(alpha = alpha.value)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Parul Campus Navigator",
+                color = Color(0xFF00E676),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.graphicsLayer(alpha = alpha.value)
+            )
+        }
+    }
+}
