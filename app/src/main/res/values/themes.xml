@@ -8,8 +8,8 @@
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <!-- Dark gradient matching app background -->
         <item name="windowSplashScreenBackground">#0F2027</item>
-        <!-- Direct app logo icon for 100% compatibility across all Android OS versions -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_app_logo</item>
+        <!-- Transparent icon to prevent logo duplicate display before Compose splash runs -->
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <!-- The theme to use after the splash screen is gone -->
         <item name="postSplashScreenTheme">@style/Theme.SmartCampus</item>
     </style>

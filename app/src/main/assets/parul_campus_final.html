@@ -1170,12 +1170,32 @@
       }
 
       // 5. Update route starting waypoint to match current live location (covered path disappears)
-      if (routeCtrl) {
-        if (!lastSplicedLL || userLL.distanceTo(lastSplicedLL) > 15) {
-          try {
-            routeCtrl.spliceWaypoints(0, 1, userLL);
-            lastSplicedLL = userLL;
-          } catch(e){}
+      if (routeCtrl && routeCtrl._line && liveLat !== null && liveLng !== null) {
+        try {
+          const line = routeCtrl._line;
+          const latlngs = line.getLatLngs();
+          if (latlngs && latlngs.length > 0) {
+            // Find index of the point on the route closest to the user
+            let closestIdx = 0;
+            let minDist = Infinity;
+            for (let i = 0; i < latlngs.length; i++) {
+              const d = userLL.distanceTo(latlngs[i]);
+              if (d < minDist) {
+                minDist = d;
+                closestIdx = i;
+              }
+            }
+            
+            // Slice the line points so only the remaining path is drawn
+            if (closestIdx > 0) {
+              const newLatLngs = latlngs.slice(closestIdx);
+              // Prepend user's exact current location so the line touches the blue dot
+              newLatLngs.unshift(userLL);
+              line.setLatLngs(newLatLngs);
+            }
+          }
+        } catch (e) {
+          console.error("Error slicing path offline:", e);
         }
       }
     }

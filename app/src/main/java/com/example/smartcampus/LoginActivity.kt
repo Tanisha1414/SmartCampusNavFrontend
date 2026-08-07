@@ -65,11 +65,11 @@ class LoginActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     delay(4500)
-                    showSplash = false
-                    // Auto-login after splash animation completes
                     if (authRepository.isLoggedIn()) {
                         startActivity(Intent(this@LoginActivity, HomeActivity::class.java))
                         finish()
+                    } else {
+                        showSplash = false
                     }
                 }
 
