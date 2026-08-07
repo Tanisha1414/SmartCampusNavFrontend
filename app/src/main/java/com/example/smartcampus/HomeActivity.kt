@@ -116,7 +116,6 @@ fun HomeScreen(
     onNavigateToAddLocation: () -> Unit,
     onNavigateToAccount: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryQuery by remember { mutableStateOf<String?>(null) }
     var selectedCategoryName by remember { mutableStateOf<String?>(null) }
     var showCategoryDialog by remember { mutableStateOf(false) }
@@ -140,18 +139,6 @@ fun HomeScreen(
                 it.type.contains(query, ignoreCase = true) || it.name.contains(query, ignoreCase = true)
             }
             builtin + filteredCustom
-        }
-    }
-
-    val allLocations = remember { SampleData.locations }
-    val autocompleteResults = remember(searchQuery) {
-        if (searchQuery.trim().length >= 2) {
-            allLocations.filter {
-                it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.type.contains(searchQuery, ignoreCase = true)
-            }.take(5)
-        } else {
-            emptyList()
         }
     }
 
@@ -274,114 +261,6 @@ fun HomeScreen(
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 3. Functional Search Bar with Live Autocomplete Dropdown
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search building, room, lab...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.clickable {
-                                if (searchQuery.isNotBlank()) onNavigateToSearch(searchQuery)
-                            }
-                        )
-                    },
-                    trailingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color(0xFF2C3E50), shape = CircleShape)
-                                .clickable {
-                                    Toast.makeText(context, "Voice Search listening...", Toast.LENGTH_SHORT).show()
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = "Voice Search",
-                                tint = Color(0xFF00E676),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            focusManager.clearFocus()
-                            if (searchQuery.isNotBlank()) {
-                                onNavigateToSearch(searchQuery)
-                            }
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF00E676),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedContainerColor = Color.White.copy(alpha = 0.08f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
-                )
-
-                // Floating Live Autocomplete Results
-                if (autocompleteResults.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF162230)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                    ) {
-                        Column {
-                            autocompleteResults.forEach { location ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            focusManager.clearFocus()
-                                            onNavigateToMapWithTarget(location.id, location.name)
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        tint = Color(0xFF00E676),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = location.name,
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Text(
-                                            text = location.type,
-                                            color = Color.White.copy(alpha = 0.6f),
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                }
-                                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                            }
-                        }
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
