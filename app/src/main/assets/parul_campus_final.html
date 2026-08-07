@@ -831,6 +831,9 @@
     }
 
     async function findRoute(){
+      document.getElementById('sv-dist').textContent='';
+      document.getElementById('sv-time').textContent='';
+      document.getElementById('sv-turns').textContent='';
       const from=getFromLatLng(),to=getToLatLng();
       if(!to){alert('Please select a destination.');return;}
 
@@ -875,6 +878,19 @@
     function doRouteWithWaypoints(waypoints){
       if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
       document.getElementById('find-btn').disabled=true;
+
+      // Temporarily remove maxBounds if route includes any point outside campus bounds
+      if(waypoints && waypoints.length >= 2){
+        const from = waypoints[0];
+        const to = waypoints[waypoints.length - 1];
+        if(!campusBounds.contains(from) || !campusBounds.contains(to)){
+          map.setMaxBounds(null);
+          map.setMinZoom(10);
+        } else {
+          map.setMaxBounds(campusBounds);
+          map.setMinZoom(15);
+        }
+      }
 
       routeCtrl=L.Routing.control({
         waypoints,
@@ -931,6 +947,17 @@
       clearRouteMarkers();
       toast('Calculating route…',0);
       document.getElementById('find-btn').disabled=true;
+
+      // Temporarily remove maxBounds if either start or end is outside campus bounds
+      const fromLL = L.latLng(from.lat, from.lng);
+      const toLL = L.latLng(to.lat, to.lng);
+      if(!campusBounds.contains(fromLL) || !campusBounds.contains(toLL)){
+        map.setMaxBounds(null);
+        map.setMinZoom(10);
+      } else {
+        map.setMaxBounds(campusBounds);
+        map.setMinZoom(15);
+      }
 
       const toLocName = toId ? (LOCS.find(l=>l.id===toId)?.name || 'Destination') : 'Destination';
 
@@ -1136,6 +1163,14 @@
 
     function clearRoute(){
       if(routeCtrl){map.removeControl(routeCtrl);routeCtrl=null;}
+      // Restore campus bounds on clear
+      map.setMaxBounds(campusBounds);
+      map.setMinZoom(15);
+      // Clear stats text
+      document.getElementById('sv-dist').textContent='-';
+      document.getElementById('sv-time').textContent='-';
+      document.getElementById('sv-turns').textContent='-';
+
       fromId=null;toId=null;
       navigating=false;followMode=false;
       navInstructions=[];navStepIndex=0;
