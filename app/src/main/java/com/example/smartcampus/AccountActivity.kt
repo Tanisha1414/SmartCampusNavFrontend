@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import com.example.smartcampus.data.AuthRepository
 import com.example.smartcampus.ui.theme.SmartCampusTheme
 
@@ -56,10 +58,7 @@ class AccountActivity : ComponentActivity() {
                             startActivity(Intent(this, HomeActivity::class.java))
                             finishAffinity()
                         },
-                        onNavigateToSearch = {
-                            startActivity(Intent(this, SearchActivity::class.java))
-                            finish()
-                        },
+
                         onNavigateToMapWithTarget = { locationId, locationName ->
                             val intent = Intent(this, MapActivity::class.java)
                             intent.putExtra("LOCATION_ID", locationId)
@@ -91,7 +90,7 @@ fun AccountScreen(
     userEmail: String,
     onNavigateBack: () -> Unit,
     onNavigateToHome: () -> Unit,
-    onNavigateToSearch: () -> Unit,
+
     onNavigateToMapWithTarget: (Int, String) -> Unit,
     onNavigateToMap: () -> Unit,
     onLogout: () -> Unit
@@ -100,14 +99,15 @@ fun AccountScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
 
-    val favoriteLocations = remember {
-        listOf(
-            Location(2, "Main Food Court", 22.288788, 73.364878, "Food"),
-            Location(4, "Faculty of Engineering & Technology", 22.288629, 73.364104, "Academic"),
-            Location(27, "Dr. R C Shah Medical Library", 22.292118, 73.366348, "Library"),
-            Location(38, "Domino's", 22.291174, 73.364777, "Food"),
-            Location(45, "Football Ground (Chhetri Complex)", 22.289063, 73.362821, "Sports")
-        )
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("smart_campus_favorites", Context.MODE_PRIVATE)
+    val favoritesJson = prefs.getString("favorites", "[]")
+    val favoriteLocations = remember(favoritesJson) {
+        try {
+            parseFavorites(favoritesJson ?: "[]")
+        } catch (e: Exception) {
+            emptyList<Location>()
+        }
     }
 
     Scaffold(
@@ -122,12 +122,7 @@ fun AccountScreen(
                     icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = Color.White.copy(alpha = 0.7f)) },
                     label = { Text("Home", color = Color.White.copy(alpha = 0.7f)) }
                 )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onNavigateToSearch() },
-                    icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White.copy(alpha = 0.7f)) },
-                    label = { Text("Search", color = Color.White.copy(alpha = 0.7f)) }
-                )
+
                 NavigationBarItem(
                     selected = false,
                     onClick = { onNavigateToMap() },
@@ -312,31 +307,60 @@ fun AccountScreen(
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Tap any saved location to open on Map:", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    favoriteLocations.forEach { loc ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable {
-                                    showFavoritesDialog = false
-                                    onNavigateToMapWithTarget(loc.id, loc.name)
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
+                    if (favoriteLocations.isEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Row(
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.3f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "No saved favourites yet",
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Open the map and tap \u2764\uFE0F on any location to save it here.",
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontSize = 12.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Text("Tap any saved location to open on Map:", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        favoriteLocations.forEach { loc ->
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        showFavoritesDialog = false
+                                        onNavigateToMapWithTarget(loc.id, loc.name)
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
                             ) {
-                                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF00E676), modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(loc.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                    Text(loc.type, color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF00E676), modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(loc.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(loc.type, color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                                    }
                                 }
                             }
                         }
@@ -464,4 +488,22 @@ fun AccountOptionItem(
             )
         }
     }
+}
+
+fun parseFavorites(json: String): List<Location> {
+    val result = mutableListOf<Location>()
+    if (json == "[]" || json.isBlank()) return result
+    val items = json.removeSurrounding("[", "]").split("},")
+    for (item in items) {
+        try {
+            val clean = item.trim().removeSurrounding("{", "}")
+            val id = Regex("\"id\":(\\d+)").find(clean)?.groupValues?.get(1)?.toInt() ?: continue
+            val name = Regex("\"name\":\"([^\"]*)\"").find(clean)?.groupValues?.get(1) ?: continue
+            val lat = Regex("\"lat\":([\\d.]+)").find(clean)?.groupValues?.get(1)?.toDouble() ?: 0.0
+            val lng = Regex("\"lng\":([\\d.]+)").find(clean)?.groupValues?.get(1)?.toDouble() ?: 0.0
+            val type = Regex("\"type\":\"([^\"]*)\"").find(clean)?.groupValues?.get(1) ?: ""
+            result.add(Location(id, name, lat, lng, type))
+        } catch (e: Exception) { /* skip malformed entry */ }
+    }
+    return result
 }

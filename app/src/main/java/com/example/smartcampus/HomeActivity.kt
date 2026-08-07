@@ -131,12 +131,6 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = { onNavigateToMap() },
-                    icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White.copy(alpha = 0.7f)) },
-                    label = { Text("Search", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onNavigateToMap() },
                     icon = { Icon(Icons.Default.Place, contentDescription = "Map", tint = Color.White.copy(alpha = 0.7f)) },
                     label = { Text("Map", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp) }
                 )
