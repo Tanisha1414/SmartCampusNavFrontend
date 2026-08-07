@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
@@ -68,6 +69,9 @@ class HomeActivity : ComponentActivity() {
                         onNavigateToMap = {
                             startActivity(Intent(this, MapActivity::class.java))
                         },
+                        onNavigateToAddLocation = {
+                            startActivity(Intent(this, AddLocationActivity::class.java))
+                        },
                         onNavigateToAccount = {
                             startActivity(Intent(this, AccountActivity::class.java))
                         }
@@ -87,6 +91,7 @@ fun HomeScreen(
     onNavigateToSearch: (String) -> Unit,
     onNavigateToMapWithTarget: (Int, String) -> Unit,
     onNavigateToMap: () -> Unit,
+    onNavigateToAddLocation: () -> Unit,
     onNavigateToAccount: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -127,6 +132,12 @@ fun HomeScreen(
                     onClick = { /* Home */ },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = Color(0xFF00E676)) },
                     label = { Text("Home", color = Color(0xFF00E676), fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { onNavigateToAddLocation() },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White.copy(alpha = 0.7f)) },
+                    label = { Text("Add", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp) }
                 )
                 NavigationBarItem(
                     selected = false,

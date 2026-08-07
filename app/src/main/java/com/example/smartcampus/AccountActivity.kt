@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
@@ -69,6 +70,10 @@ class AccountActivity : ComponentActivity() {
                             startActivity(Intent(this, MapActivity::class.java))
                             finish()
                         },
+                        onNavigateToAddLocation = {
+                            startActivity(Intent(this, AddLocationActivity::class.java))
+                            finish()
+                        },
                         onLogout = {
                             authRepository.logout()
                             val intent = Intent(this, LoginActivity::class.java)
@@ -93,6 +98,7 @@ fun AccountScreen(
 
     onNavigateToMapWithTarget: (Int, String) -> Unit,
     onNavigateToMap: () -> Unit,
+    onNavigateToAddLocation: () -> Unit,
     onLogout: () -> Unit
 ) {
     var showFavoritesDialog by remember { mutableStateOf(false) }
@@ -123,6 +129,12 @@ fun AccountScreen(
                     label = { Text("Home", color = Color.White.copy(alpha = 0.7f)) }
                 )
 
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { onNavigateToAddLocation() },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White.copy(alpha = 0.7f)) },
+                    label = { Text("Add", color = Color.White.copy(alpha = 0.7f)) }
+                )
                 NavigationBarItem(
                     selected = false,
                     onClick = { onNavigateToMap() },

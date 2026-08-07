@@ -74,6 +74,12 @@
             android:label="Account"
             android:theme="@style/Theme.SmartCampus" />
 
+        <!-- Add Location -->
+        <activity
+            android:name=".AddLocationActivity"
+            android:exported="false"
+            android:label="Add Location"
+            android:theme="@style/Theme.SmartCampus" />
 
     </application>
 
