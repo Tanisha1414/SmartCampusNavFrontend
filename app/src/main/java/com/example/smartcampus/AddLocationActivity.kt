@@ -67,16 +67,22 @@ private fun buildLocJson(name: String, lat: Double, lng: Double, type: String): 
     return """{"name":"${name.replace("\"", "\\\"")}","lat":$lat,"lng":$lng,"type":"$type"}"""
 }
 
-private fun loadExistingCustomNames(context: Context): Set<String> {
+private fun loadExistingCustomLocations(context: Context): List<Location> {
     val prefs = context.getSharedPreferences("smart_campus_custom_locs", Context.MODE_PRIVATE)
     val json = prefs.getString("custom_locations", "[]") ?: "[]"
-    val names = mutableSetOf<String>()
-    // Simple manual parsing: find all "name":"..." entries
-    val regex = Regex(""""name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"""")
+    val result = mutableListOf<Location>()
+    if (json == "[]" || json.isBlank()) return result
+    val regex = Regex("""\{"name":"([^"]*)","lat":([\d.-]+),"lng":([\d.-]+),"type":"([^"]*)"""")
     regex.findAll(json).forEach { match ->
-        names.add(match.groupValues[1].lowercase())
+        try {
+            val name = match.groupValues[1]
+            val lat = match.groupValues[2].toDouble()
+            val lng = match.groupValues[3].toDouble()
+            val type = match.groupValues[4]
+            result.add(Location(1000 + result.size, name, lat, lng, type))
+        } catch (e: Exception) {}
     }
-    return names
+    return result
 }
 
 private fun saveCustomLocation(context: Context, name: String, lat: Double, lng: Double, type: String) {
@@ -363,6 +369,17 @@ fun AddLocationScreen(
                         return@Button
                     }
 
+                    // Profanity check (bad words filter)
+                    val badWords = listOf(
+                        "fuck", "shit", "asshole", "bitch", "cunt", "dick", "bastard", "pussy",
+                        "chutiya", "bhenchod", "madarchod", "gand", "loda", "laund", "harami", "kamina"
+                    )
+                    val cleanName = name.lowercase()
+                    if (badWords.any { cleanName.contains(it) }) {
+                        Toast.makeText(context, "Inappropriate language is not allowed in location names", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
+
                     // Validate lat/lng are numbers
                     val lat = latStr.toDoubleOrNull()
                     val lng = lngStr.toDoubleOrNull()
@@ -375,7 +392,16 @@ fun AddLocationScreen(
                         return@Button
                     }
 
-                    // Check uniqueness against built-in locations
+                    // Check duplicate coordinates against built-in locations (approx 1 meter)
+                    val isDuplicateCoordInBuiltin = SampleData.locations.any {
+                        Math.abs(it.latitude - lat) < 0.00001 && Math.abs(it.longitude - lng) < 0.00001
+                    }
+                    if (isDuplicateCoordInBuiltin) {
+                        Toast.makeText(context, "A built-in campus location already exists at these coordinates", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    // Check duplicate name against built-in locations
                     val existsInBuiltin = SampleData.locations.any {
                         it.name.equals(name, ignoreCase = true)
                     }
@@ -384,9 +410,23 @@ fun AddLocationScreen(
                         return@Button
                     }
 
-                    // Check uniqueness against existing custom locations
-                    val existingCustomNames = loadExistingCustomNames(context)
-                    if (existingCustomNames.contains(name.lowercase())) {
+                    // Load custom locations for duplicate name & coordinate verification
+                    val customLocations = loadExistingCustomLocations(context)
+
+                    // Check duplicate coordinates against custom locations
+                    val isDuplicateCoordInCustom = customLocations.any {
+                        Math.abs(it.latitude - lat) < 0.00001 && Math.abs(it.longitude - lng) < 0.00001
+                    }
+                    if (isDuplicateCoordInCustom) {
+                        Toast.makeText(context, "A custom location already exists at these coordinates", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    // Check duplicate name against custom locations
+                    val existsInCustom = customLocations.any {
+                        it.name.equals(name, ignoreCase = true)
+                    }
+                    if (existsInCustom) {
                         Toast.makeText(context, "A custom location with this name already exists", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
